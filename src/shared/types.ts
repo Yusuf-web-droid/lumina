@@ -45,6 +45,28 @@ export type QuickLinkIcon =
   | { kind: 'image'; src: string }
   | { kind: 'glyph'; path: string; color: string }
 
+/** A web app pinned to the side panel's icon rail. */
+export interface SidebarTool {
+  name: string
+  url: string
+}
+
+/** A pinned tool as the rail paints it: identity, resolved icon, selection. */
+export interface SidebarToolView extends SidebarTool {
+  icon: QuickLinkIcon | null
+  active: boolean
+}
+
+/** Why the rail's pin button is disabled, or null when it can be used. */
+export type PinBlocked = 'pinned' | 'full' | 'unpinnable'
+
+/** Everything the rail needs to repaint itself. */
+export interface SidebarState {
+  tools: SidebarToolView[]
+  /** Whether the active tab can be pinned, and if not, why. */
+  pinBlocked: PinBlocked | null
+}
+
 export interface Bookmark {
   url: string
   title: string
@@ -125,6 +147,13 @@ export const IPC = {
   SidebarToggle: 'sidebar:toggle',
   SidebarReload: 'sidebar:reload',
 
+  // rail -> main (invoke)
+  SidebarToolsList: 'sidebar:tools-list',
+  SidebarToolsSelect: 'sidebar:tools-select',
+  SidebarToolsPinCurrent: 'sidebar:tools-pin-current',
+  SidebarToolsUnpin: 'sidebar:tools-unpin',
+  SidebarClose: 'sidebar:close',
+
   ZoomIn: 'zoom:in',
   ZoomOut: 'zoom:out',
   ZoomReset: 'zoom:reset',
@@ -139,7 +168,10 @@ export const IPC = {
   OnPermissionPrompt: 'on:permission-prompt',
   OnFocusAddressBar: 'on:focus-address-bar',
   OnToggleFind: 'on:toggle-find',
-  OnToggleQuickLinks: 'on:toggle-quick-links'
+  OnToggleQuickLinks: 'on:toggle-quick-links',
+
+  // main -> rail (send)
+  OnSidebarTools: 'on:sidebar-tools'
 } as const
 
 /** The surface `contextBridge` exposes to the chrome UI as `window.nexus`. */
@@ -192,7 +224,6 @@ export interface NexusAPI {
   }
   sidebar: {
     toggle(): Promise<void>
-    reload(): Promise<void>
   }
   zoom: {
     in(): Promise<void>
@@ -209,4 +240,19 @@ export interface NexusAPI {
   onFocusAddressBar(cb: () => void): void
   onToggleFind(cb: () => void): void
   onToggleQuickLinks(cb: () => void): void
+}
+
+/**
+ * The much smaller surface exposed to the side panel's icon rail as
+ * `window.nexusRail`. Kept separate from NexusAPI so the rail — a second
+ * renderer — cannot reach tab, history or download control.
+ */
+export interface NexusRailAPI {
+  list(): Promise<SidebarState>
+  select(url: string): Promise<void>
+  unpin(url: string): Promise<void>
+  pinCurrent(): Promise<void>
+  reload(): Promise<void>
+  close(): Promise<void>
+  onState(cb: (s: SidebarState) => void): void
 }

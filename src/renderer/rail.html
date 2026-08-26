@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:"
+    />
+    <title>Nexus panel rail</title>
+    <link rel="stylesheet" href="./rail.css" />
+  </head>
+  <body>
+    <nav id="rail" aria-label="Side panel tools">
+      <div id="tools" role="tablist"></div>
+
+      <div id="rail-actions">
+        <button id="pin" class="rail-btn" type="button" title="Pin this page" aria-label="Pin this page">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 3.5v9M3.5 8h9" />
+          </svg>
+        </button>
+        <button id="reload" class="rail-btn" type="button" title="Reload panel" aria-label="Reload panel">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M13 8a5 5 0 1 1-1.6-3.7" />
+            <path d="M13 2.5V5h-2.5" />
+          </svg>
+        </button>
+        <button id="close" class="rail-btn" type="button" title="Close panel (⌘J)" aria-label="Close panel">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+          </svg>
+        </button>
+      </div>
+    </nav>
+    <script type="module" src="./rail.ts"></script>
+  </body>
+</html>

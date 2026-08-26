@@ -71,8 +71,7 @@ const api: NexusAPI = {
     reset: () => invoke<void>(IPC.QuickLinksReset)
   },
   sidebar: {
-    toggle: () => invoke<void>(IPC.SidebarToggle),
-    reload: () => invoke<void>(IPC.SidebarReload)
+    toggle: () => invoke<void>(IPC.SidebarToggle)
   },
   zoom: {
     in: () => invoke<void>(IPC.ZoomIn),

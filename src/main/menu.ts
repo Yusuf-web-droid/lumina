@@ -86,7 +86,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
           click: () => win()?.focusQuickLinks()
         },
         {
-          label: 'Toggle Gemini Panel',
+          label: 'Toggle Side Panel',
           accelerator: 'CmdOrCtrl+J',
           click: () => win()?.toggleSidebar()
         },

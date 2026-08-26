@@ -1,6 +1,12 @@
 import { BaseWindow, WebContentsView, type Rectangle, type WebContents } from 'electron'
 import { join } from 'node:path'
-import type { BrowserSnapshot, DownloadEntry, FindResult, PermissionPrompt } from '@shared/types'
+import type {
+  BrowserSnapshot,
+  DownloadEntry,
+  FindResult,
+  PermissionPrompt,
+  SidebarState
+} from '@shared/types'
 import { IPC } from '@shared/types'
 import { Bookmarks } from './bookmarks'
 import { attachContextMenu } from './contextMenu'
@@ -49,6 +55,8 @@ export class BrowserWindow {
   private readonly sessionStore: JSONStore<SessionData>
   private readonly sidebar: Sidebar
   private chromeHeight = BASE_CHROME_HEIGHT
+  /** Last URL the rail was told about, so it is not repainted needlessly. */
+  private lastRailURL: string | null = null
   private disposed = false
 
   constructor() {
@@ -98,6 +106,7 @@ export class BrowserWindow {
       this.broadcastSnapshot()
     })
     this.sidebar.openInTab = (url) => this.tabs.create(url)
+    this.sidebar.currentTabURL = () => this.tabs.activeWebContents()?.getURL() ?? null
 
     this.downloads = new Downloads((list) => this.send<DownloadEntry[]>(IPC.OnDownloads, list))
     this.permissions = new Permissions((p) => this.send<PermissionPrompt>(IPC.OnPermissionPrompt, p))
@@ -205,6 +214,7 @@ export class BrowserWindow {
     this.history.flush()
     this.bookmarks.flush()
     this.quickLinks.flush()
+    this.sidebar.flush()
     faviconStore().flush()
     weatherStore().flush()
     themeStore().flush()
@@ -222,6 +232,14 @@ export class BrowserWindow {
       ...this.tabs.snapshot(),
       sidebarOpen: this.sidebar.isOpen()
     })
+
+    // The rail only cares which URL is in front, so repaint it on a real
+    // change rather than on every title and progress tick.
+    const url = this.tabs.activeWebContents()?.getURL() ?? null
+    if (url !== this.lastRailURL) {
+      this.lastRailURL = url
+      this.sidebar.broadcast()
+    }
   }
 
   // -------------------------------------------------------------------- facade
@@ -312,8 +330,35 @@ export class BrowserWindow {
     if (this.sidebar.isOpen()) this.sidebar.focus()
   }
 
+  closeSidebar(): void {
+    this.sidebar.hide()
+  }
+
   reloadSidebar(): void {
     this.sidebar.reload()
+  }
+
+  sidebarState(): SidebarState {
+    return this.sidebar.state(this.tabs.activeWebContents()?.getURL() ?? null)
+  }
+
+  selectSidebarTool(url: string): void {
+    this.sidebar.select(url)
+  }
+
+  unpinSidebarTool(url: string): void {
+    this.sidebar.unpin(url)
+  }
+
+  /** Rail "+" button: pin whatever the active tab is showing. */
+  pinActiveTabAsTool(): void {
+    const wc = this.tabs.activeWebContents()
+    if (!wc) return
+    this.sidebar.pin(wc.getURL(), wc.getTitle())
+  }
+
+  isRailContents(wc: WebContents): boolean {
+    return this.sidebar.isRailContents(wc)
   }
 
   toggleDevTools(): void {
@@ -341,6 +386,8 @@ export class BrowserWindow {
       if (page) views.push({ name: 'page', wc: page })
       const panel = this.sidebar.contents()
       if (panel) views.push({ name: 'sidebar', wc: panel })
+      const rail = this.sidebar.railContents()
+      if (rail) views.push({ name: 'rail', wc: rail })
       void runSmokeCapture(dir, views)
     }, 5000)
   }

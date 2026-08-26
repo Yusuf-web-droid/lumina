@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Side panel
+
+- The side panel (⌘J) now hosts several pinned tools instead of just Gemini, switched
+  from an icon rail down the window's right edge. Ships with Gemini, ChatGPT and Claude.
+- Pin the page you are on with the rail's + button, unpin from the badge on a tool's
+  icon. Pinned tools and the last one you used persist across launches.
+- Each tool keeps its own live view, so switching away and back does not reload the
+  conversation. Tools share the tabs' session, so one sign-in covers both.
+
 ## 0.1.0
 
 First public build. A minimal desktop browser: tabs, bookmarks, history, downloads,

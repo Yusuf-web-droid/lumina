@@ -87,7 +87,7 @@ if (!app.requestSingleInstanceLock()) {
       if (path === '' || path === '/') {
         const links = quickLinksStore().list()
         // Pick up icons for anything new or stale; they show on the next open.
-        faviconStore().refresh(links.map((l) => l.url))
+        void faviconStore().refresh(links.map((l) => l.url))
         return html(renderStartPage(links, DEFAULT_SEARCH_TEMPLATE, backgroundOptions(), (url) => siteIcon(url)))
       }
 
@@ -163,7 +163,7 @@ if (!app.requestSingleInstanceLock()) {
     themeStore().apply()
 
     // Warm the icon cache at launch, so the first new tab already has logos.
-    faviconStore().refresh(quickLinksStore().list().map((l) => l.url))
+    void faviconStore().refresh(quickLinksStore().list().map((l) => l.url))
 
     registerIPC(() => mainWindow)
       buildMenu(() => mainWindow)

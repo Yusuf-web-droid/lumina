@@ -110,10 +110,15 @@ export class Favicons {
   }
 
   /**
-   * Fetch any icon that is missing or stale, a few at a time. Fire-and-forget:
-   * new icons simply appear the next time the start page is opened.
+   * Fetch any icon that is missing or stale, a few at a time.
+   *
+   * The start page treats this as fire-and-forget — new icons simply appear the
+   * next time it is opened — but the returned promise lets a caller that paints
+   * a fixed set of icons, like the side panel's rail, repaint as soon as the
+   * fetches land. It resolves once this call's fetches are done; icons already
+   * being fetched for another caller are not waited on.
    */
-  refresh(urls: string[]): void {
+  async refresh(urls: string[]): Promise<void> {
     const now = Date.now()
     const { entries } = this.store.get()
 
@@ -143,7 +148,8 @@ export class Favicons {
       }
     }
 
-    for (let i = 0; i < Math.min(CONCURRENCY, queue.length); i++) void worker()
+    const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => worker())
+    await Promise.all(workers)
   }
 
   private async fetchFor(host: string): Promise<void> {

@@ -5,6 +5,7 @@ import type {
   QuickLinkIcon,
   DownloadEntry,
   HistoryEntry,
+  SidebarState,
   Suggestion
 } from '@shared/types'
 import { IPC } from '@shared/types'
@@ -34,6 +35,23 @@ export function registerIPC(getWindow: Getter): void {
     fn: (win: BrowserWindow, ...args: A) => R
   ): void => {
     ipcMain.handle(channel, guard(fn) as (event: IpcMainInvokeEvent, ...args: A) => R | undefined)
+  }
+
+  /**
+   * The side panel's icon rail is a second trusted renderer, so it gets its own
+   * guard rather than being folded into `isChromeContents`. Channels registered
+   * here are reachable from the rail only — never from the chrome, and never
+   * from a panel tool or a page.
+   */
+  const handleRail = <A extends unknown[], R>(
+    channel: string,
+    fn: (win: BrowserWindow, ...args: A) => R
+  ): void => {
+    ipcMain.handle(channel, (event: IpcMainInvokeEvent, ...args: A): R | undefined => {
+      const win = getWindow()
+      if (!win || !win.isRailContents(event.sender)) return undefined
+      return fn(win, ...args)
+    })
   }
 
   // ------------------------------------------------------------------- tabs
@@ -115,7 +133,13 @@ export function registerIPC(getWindow: Getter): void {
 
   // ---------------------------------------------------------------- sidebar
   handle(IPC.SidebarToggle, (win) => win.toggleSidebar())
-  handle(IPC.SidebarReload, (win) => win.reloadSidebar())
+
+  handleRail(IPC.SidebarToolsList, (win): SidebarState => win.sidebarState())
+  handleRail(IPC.SidebarToolsSelect, (win, url: string) => win.selectSidebarTool(url))
+  handleRail(IPC.SidebarToolsUnpin, (win, url: string) => win.unpinSidebarTool(url))
+  handleRail(IPC.SidebarToolsPinCurrent, (win) => win.pinActiveTabAsTool())
+  handleRail(IPC.SidebarReload, (win) => win.reloadSidebar())
+  handleRail(IPC.SidebarClose, (win) => win.closeSidebar())
 
   // ------------------------------------------------------------------- zoom
   handle(IPC.ZoomIn, (win) => win.zoom('in'))
