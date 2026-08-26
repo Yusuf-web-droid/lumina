@@ -235,12 +235,14 @@ needs an Apple Developer ID, `hardenedRuntime`, entitlements and notarization.
 
 ### Icon
 
-`resources/icon.icns` is generated from the source logo, not hand-made. To rebuild it
-after changing the artwork:
+`resources/icon.icns` is generated from the source logo, not hand-made. The source is
+`resources/logo-source.svg` — an original mark, a node-graph N that reads as both the
+letter and a connection — rasterised to `logo-source.png` because `nativeImage` cannot
+decode SVG. To rebuild the icon after changing the artwork:
 
 ```bash
 env -u ELECTRON_RUN_AS_NODE ./node_modules/.bin/electron scripts/make-icon.cjs \
-  resources/logo-source.jpeg --backdrop "#14304A,#0A1725"
+  resources/logo-source.png --backdrop "#14304A,#0A1725"
 ```
 
 The script finds the logo *mark* by bounding box and discards any wordmark — a wordmark
