@@ -3,6 +3,59 @@
 A desktop web browser built on Electron and TypeScript. It wraps Chromium rather than
 implementing a rendering engine, so real sites render exactly as they do in Chrome.
 
+## Install
+
+Download the build for your Mac from the
+[latest release](../../releases/latest) — check  → About This Mac if you are not sure
+which you need:
+
+| Your Mac | File |
+|---|---|
+| Apple Silicon (M1 and later) | `Nexus-<version>-arm64.dmg` |
+| Intel | `Nexus-<version>.dmg` |
+
+Open the DMG and drag Nexus to Applications.
+
+### First launch will be blocked
+
+macOS will refuse to open it, saying Nexus is damaged or from an unidentified
+developer. **It is neither.** The app is not signed with an Apple Developer ID
+certificate, and Gatekeeper treats every unsigned app this way. Signing requires a paid
+Apple Developer membership, which this project does not have.
+
+You have three options, in order of how much you have to trust a stranger:
+
+1. **Build it yourself** — nothing to bypass, because an app you compiled locally is
+   never quarantined. See [Building from source](#building-from-source).
+2. **Allow it in Settings** — try to open Nexus, then go to  → System Settings →
+   Privacy & Security. A message about Nexus appears near the bottom; click **Open
+   Anyway**.
+3. **Clear the quarantine flag** — the same thing from a terminal:
+
+   ```bash
+   xattr -d com.apple.quarantine /Applications/Nexus.app
+   ```
+
+Only step 1 requires no trust at all, and it is the honest recommendation for a browser
+from someone you do not know.
+
+### Updating
+
+There is no auto-update: applying an update on macOS requires the same code signature
+the project does not have. Download a newer release and replace the app, or
+`git pull` and rebuild. Your profile — tabs, bookmarks, history, quick links — lives in
+`~/Library/Application Support/Nexus/` and survives replacing the app.
+
+## Building from source
+
+```bash
+nvm use          # Node 22, per .nvmrc
+npm install
+npm run package  # -> dist/
+```
+
+The requirements below apply.
+
 ## Requirements
 
 This machine is macOS 12.7.6 (Monterey) on Intel, which pins two versions:
