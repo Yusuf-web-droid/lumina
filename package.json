@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "package": "npm run build && electron-builder --mac --x64"
+    "package": "npm run build && electron-builder --mac"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

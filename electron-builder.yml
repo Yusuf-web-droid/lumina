@@ -12,11 +12,14 @@ files:
 
 mac:
   category: public.app-category.productivity
+  # Both architectures: every Mac sold since 2020 is Apple Silicon, and an
+  # x64-only build runs there under Rosetta. Separate artifacts rather than a
+  # universal binary, so neither download carries the other's slice.
   target:
     - target: dmg
-      arch: [x64]
+      arch: [x64, arm64]
     - target: dir
-      arch: [x64]
+      arch: [x64, arm64]
   # Unsigned: fine for personal use. Distributing to others needs an Apple
   # Developer ID plus notarization, at which point set identity and enable
   # hardened runtime + entitlements.
