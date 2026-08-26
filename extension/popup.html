@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Nexus Assistant</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span class="brand-name">Nexus</span>
+      </div>
+
+      <div class="header-right">
+        <nav class="tabs" role="tablist" aria-label="Sections">
+          <button
+            id="tab-chat"
+            class="tab is-active"
+            role="tab"
+            type="button"
+            aria-selected="true"
+            aria-controls="panel-chat"
+          >
+            Chat
+          </button>
+          <button
+            id="tab-links"
+            class="tab"
+            role="tab"
+            type="button"
+            aria-selected="false"
+            aria-controls="panel-links"
+          >
+            Links
+          </button>
+        </nav>
+
+        <button id="open-settings" class="icon-btn" type="button" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="10" cy="10" r="2.6" />
+            <path
+              d="M10 2.5v1.6M10 15.9v1.6M17.5 10h-1.6M4.1 10H2.5M15.3 4.7l-1.1 1.1M5.8 14.2l-1.1 1.1M15.3 15.3l-1.1-1.1M5.8 5.8L4.7 4.7"
+            />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ---------------------------------------------------------- chat -->
+    <section id="panel-chat" class="panel panel-chat" role="tabpanel" aria-labelledby="tab-chat">
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions">
+        <div id="chat-empty" class="empty">
+          <p class="empty-title">Ask me anything</p>
+          <p class="empty-sub">Your conversation is stored locally on this device.</p>
+        </div>
+      </div>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <textarea
+          id="chat-input"
+          class="chat-input"
+          rows="1"
+          placeholder="Send a message…"
+          aria-label="Message"
+        ></textarea>
+        <button id="send" class="send-btn" type="submit" title="Send" aria-label="Send message">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 10L17 3l-4 14-3.5-5.5L3 10z" />
+          </svg>
+        </button>
+      </form>
+
+      <button id="clear-chat" class="ghost-btn" type="button">Clear conversation</button>
+    </section>
+
+    <!-- --------------------------------------------------------- links -->
+    <section
+      id="panel-links"
+      class="panel panel-links"
+      role="tabpanel"
+      aria-labelledby="tab-links"
+      hidden
+    >
+      <div id="links" class="links-grid"></div>
+      <p id="links-empty" class="empty-sub links-empty" hidden>No links yet — add one below.</p>
+
+      <form id="add-link" class="add-link" autocomplete="off">
+        <input id="link-name" class="field" type="text" placeholder="Name" aria-label="Link name" />
+        <input id="link-url" class="field" type="text" placeholder="example.com" aria-label="Link URL" />
+        <button class="add-btn" type="submit" title="Add link" aria-label="Add link">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+        </button>
+      </form>
+      <p id="link-error" class="field-error" role="alert" hidden></p>
+    </section>
+
+    <!-- ------------------------------------------------------ settings -->
+    <section id="panel-settings" class="panel panel-settings" hidden>
+      <div class="settings-body">
+        <h2 class="settings-title">Anthropic API key</h2>
+        <p class="settings-note">
+          Needed for the chat to reach Claude. Stored only in this browser, on this device.
+        </p>
+
+        <div class="key-row">
+          <input
+            id="api-key"
+            class="field"
+            type="password"
+            placeholder="sk-ant-…"
+            aria-label="Anthropic API key"
+            spellcheck="false"
+          />
+          <button id="toggle-key" class="add-btn" type="button" title="Show or hide key" aria-label="Show or hide key">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z" />
+              <circle cx="10" cy="10" r="2.4" />
+            </svg>
+          </button>
+        </div>
+
+        <p id="key-status" class="settings-status" role="status"></p>
+
+        <p class="settings-note">
+          Create one at <span class="mono">console.anthropic.com</span> → API keys. Usage is billed to
+          your own Anthropic account.
+        </p>
+
+        <div class="settings-actions">
+          <button id="save-key" class="primary-btn" type="button">Save key</button>
+          <button id="clear-key" class="text-btn" type="button">Remove</button>
+        </div>
+
+        <p class="settings-model">Model: <span class="mono">claude-opus-5</span></p>
+      </div>
+
+      <button id="close-settings" class="ghost-btn" type="button">Back to chat</button>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+appId: dev.nexus.browser
+productName: Nexus
+copyright: Copyright © 2026
+
+directories:
+  output: dist
+  buildResources: resources
+
+files:
+  - out/**/*
+  - package.json
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64]
+    - target: dir
+      arch: [x64]
+  # Unsigned: fine for personal use. Distributing to others needs an Apple
+  # Developer ID plus notarization, at which point set identity and enable
+  # hardened runtime + entitlements.
+  identity: null
+  minimumSystemVersion: "12.0"
+
+dmg:
+  title: Nexus
+  contents:
+    - x: 130
+      y: 220
+      type: file
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
