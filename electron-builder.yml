@@ -10,6 +10,12 @@ files:
   - out/**/*
   - package.json
 
+# The shipped start-page photos. `files` only covers the asar, so these are
+# copied into the app's Contents/Resources instead — see backgroundPresets.ts.
+extraResources:
+  - from: resources/backgrounds
+    to: backgrounds
+
 mac:
   category: public.app-category.productivity
   # Both architectures: every Mac sold since 2020 is Apple Silicon, and an

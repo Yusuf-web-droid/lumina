@@ -60,14 +60,25 @@ if (!app.requestSingleInstanceLock()) {
 
     const backgroundOptions = () => {
       const bg = backgroundStore().get()
-      return { kind: bg.kind, hasImage: backgroundStore().imagePath() !== null, dim: bg.dim }
+      return {
+        kind: bg.kind,
+        hasImage: backgroundStore().imagePath() !== null,
+        preset: bg.preset,
+        dim: bg.dim
+      }
     }
 
     const serveStartPage = async (request: Request): Promise<Response> => {
       const { hostname, pathname } = new URL(request.url)
 
-      // nexus://bg/current — the stored background image itself.
-      if (hostname === 'bg') return backgroundStore().imageResponse()
+      // nexus://bg/current — the background in use.
+      // nexus://bg/preset/<id> — one bundled photo, for the picker's thumbnails.
+      if (hostname === 'bg') {
+        const preset = /^\/preset\/([a-z0-9-]+)$/.exec(pathname)
+        return backgroundStore().imageResponse(
+          preset ? backgroundStore().presetPath(preset[1]!) : undefined
+        )
+      }
       if (hostname === 'icon') return faviconStore().response(pathname.replace(/^\/+/, ''))
       if (hostname !== 'home') return new Response('Not found', { status: 404 })
 
@@ -114,6 +125,15 @@ if (!app.requestSingleInstanceLock()) {
         // Opens the system file picker; cancelling just returns unchanged.
         await backgroundStore().chooseImage()
         return backToHome()
+      }
+
+      const presetMatch = /^\/background\/preset\/([a-z0-9-]+)$/.exec(path)
+      if (presetMatch) {
+        backgroundStore().setPreset(presetMatch[1]!)
+        return new Response(null, {
+          status: 302,
+          headers: { location: 'nexus://home/background' }
+        })
       }
 
       if (path === '/background/scene' || path === '/background/plain') {

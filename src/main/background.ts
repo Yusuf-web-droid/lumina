@@ -1,14 +1,17 @@
 import { app, dialog } from 'electron'
 import { copyFileSync, existsSync, readFileSync, unlinkSync } from 'node:fs'
 import { extname, join } from 'node:path'
+import { findPreset, presetPath } from './backgroundPresets'
 import { JSONStore } from './store'
 
 export type BackgroundKind = 'scene' | 'image' | 'plain'
 
 interface BackgroundData {
   kind: BackgroundKind
-  /** Filename inside userData, for kind === 'image'. */
+  /** Filename inside userData, for a photo the user chose themselves. */
   file: string | null
+  /** Id of a bundled photo, which takes precedence over `file`. */
+  preset: string | null
   /** 0-100; how much the photo is dimmed so text stays readable. */
   dim: number
 }
@@ -34,6 +37,7 @@ export class Background {
   private store = new JSONStore<BackgroundData>('background.json', {
     kind: 'scene',
     file: null,
+    preset: null,
     dim: 45
   })
 
@@ -55,17 +59,39 @@ export class Background {
     this.store.flush()
   }
 
-  /** Absolute path of the stored image, if there is one. */
+  /** Absolute path of the current photo — a bundled one, or the user's own. */
   imagePath(): string | null {
-    const { file } = this.store.get()
+    const { preset, file } = this.store.get()
+
+    if (preset) {
+      const bundled = presetPath(preset)
+      return bundled && existsSync(bundled) ? bundled : null
+    }
+
     if (!file) return null
     const full = join(app.getPath('userData'), file)
     return existsSync(full) ? full : null
   }
 
-  /** The stored image as an HTTP response, for the nexus://bg route. */
-  imageResponse(): Response {
-    const path = this.imagePath()
+  /** Absolute path of one bundled photo, for the picker's thumbnails. */
+  presetPath(id: string): string | null {
+    const path = presetPath(id)
+    return path && existsSync(path) ? path : null
+  }
+
+  /** Switch to one of the shipped photos. */
+  setPreset(id: string): boolean {
+    if (!findPreset(id)) return false
+    this.store.update((d) => {
+      d.preset = id
+      d.kind = 'image'
+    })
+    this.store.flush()
+    return true
+  }
+
+  /** A photo as an HTTP response, for the nexus://bg routes. */
+  imageResponse(path: string | null = this.imagePath()): Response {
     if (!path) return new Response('No background set', { status: 404 })
     try {
       const bytes = readFileSync(path)
@@ -122,6 +148,7 @@ export class Background {
 
     this.store.update((d) => {
       d.file = filename
+      d.preset = null
       d.kind = 'image'
     })
     this.store.flush()
@@ -129,8 +156,10 @@ export class Background {
   }
 
   clearImage(): void {
-    const path = this.imagePath()
-    if (path) {
+    // Only ever unlink the user's own copy — never a file shipped with the app.
+    const { file } = this.store.get()
+    const path = file ? join(app.getPath('userData'), file) : null
+    if (path && existsSync(path)) {
       try {
         unlinkSync(path)
       } catch {
@@ -139,6 +168,7 @@ export class Background {
     }
     this.store.update((d) => {
       d.file = null
+      d.preset = null
       if (d.kind === 'image') d.kind = 'scene'
     })
     this.store.flush()

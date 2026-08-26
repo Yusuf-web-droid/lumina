@@ -21,8 +21,8 @@ find-in-page, quick links, and a generated start page.
 - Three optional overlays, toggled from the dock: a clock, local weather, and a to-do
   list. Weather comes from Open-Meteo using a place you type — no IP geolocation, no
   API key.
-- Choice of background: one of your own photos, a built-in illustrated scene, or a
-  plain gradient.
+- Choice of background: one of three shipped photos, one of your own, a built-in
+  illustrated scene, or a plain gradient.
 
 ### Appearance
 

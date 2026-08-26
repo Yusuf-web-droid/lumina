@@ -1,5 +1,6 @@
 import type { QuickLink, QuickLinkIcon } from '@shared/types'
 import type { BackgroundKind } from './background'
+import { BACKGROUND_PRESETS } from './backgroundPresets'
 import type { ThemeSource } from './theme'
 import { forestScene } from './scene'
 import { widgetDock, widgetOverlays, widgetScript, widgetStyles } from './widgets'
@@ -77,6 +78,8 @@ function isRenderable(url: string): boolean {
 export interface BackgroundOptions {
   kind: BackgroundKind
   hasImage: boolean
+  /** Id of the bundled photo in use, or null when the photo is the user's own. */
+  preset: string | null
   dim: number
 }
 
@@ -549,14 +552,25 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
   <h1>Background</h1>
 
   <div class="opts">
+    ${BACKGROUND_PRESETS.map((preset) =>
+      option(
+        `nexus://home/background/preset/${preset.id}`,
+        preset.name,
+        preset.description,
+        `background-image:url('nexus://bg/preset/${preset.id}')`,
+        background.kind === 'image' && background.preset === preset.id
+      )
+    ).join('\n    ')}
     ${option(
       'nexus://home/background/choose',
       'Choose a photo…',
-      background.hasImage ? 'Pick a different image from your Mac' : 'Pick an image from your Mac',
-      background.hasImage
+      background.preset === null && background.hasImage
+        ? 'Pick a different image from your Mac'
+        : 'Pick an image from your Mac',
+      background.preset === null && background.hasImage
         ? "background-image:url('nexus://bg/current')"
         : 'background:linear-gradient(135deg,#3b82f6,#8b5cf6)',
-      background.kind === 'image'
+      background.kind === 'image' && background.preset === null
     )}
     ${option(
       'nexus://home/background/scene',
