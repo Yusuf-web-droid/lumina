@@ -394,7 +394,7 @@ bar first, which proves the chrome view expands over the page.
 npm run package
 ```
 
-Produces `dist/mac/Lumina.app` (276 MB) and `dist/Lumina-0.1.0.dmg` (116 MB), Intel x64,
+Produces `dist/mac/Lumina.app` (276 MB) and `dist/Lumina-<version>.dmg` (116 MB), Intel x64,
 `minimumSystemVersion: 12.0`.
 
 The build is **unsigned** (`identity: null`), which is fine for personal use — macOS
