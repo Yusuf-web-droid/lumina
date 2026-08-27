@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumina — a minimal desktop web browser</title>
+<meta name="description" content="Lumina is a minimal desktop web browser built on Electron and TypeScript. Blocks ads and trackers from a bundled list, pins AI tools in a side panel, and hands the whole window to a game. Free and open source, for macOS, Windows and Linux." />
+<link rel="canonical" href="https://yusuf-web-droid.github.io/lumina/" />
+<link rel="icon" href="./icon.png" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Lumina — a minimal desktop web browser" />
+<meta property="og:description" content="Ad and tracker blocking, a pinned-tools side panel, and a gaming mode that hands the whole window to the page. Open source, MIT." />
+<meta property="og:url" content="https://yusuf-web-droid.github.io/lumina/" />
+<meta property="og:image" content="https://yusuf-web-droid.github.io/lumina/logo.png" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f6f8; --text: #17171a; --dim: #5f5f6b;
+    --border: #e2e2e8; --accent: #5b4bd6; --accent-2: #2f7de1; --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131317; --bg-soft: #1b1b21; --text: #ececf0; --dim: #9a9aa6;
+      --border: #2c2c35; --accent: #8f80ff; --accent-2: #6aa8ff; --card: #1b1b21;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px; }
+
+  header { border-bottom: 1px solid var(--border); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -0.01em; }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  header nav a { color: var(--dim); text-decoration: none; margin-left: 20px; font-size: 15px; }
+  header nav a:hover { color: var(--text); }
+
+  .hero { text-align: center; padding: 72px 0 56px; }
+  .hero img.mark { width: 108px; height: 108px; border-radius: 26px; box-shadow: 0 12px 40px rgba(60,50,160,.22); }
+  .hero h1 { font-size: clamp(38px, 7vw, 60px); margin: 26px 0 10px; letter-spacing: -0.03em; line-height: 1.05; }
+  .hero p.tag { font-size: clamp(17px, 2.4vw, 21px); color: var(--dim); margin: 0 auto 32px; max-width: 620px; }
+
+  .downloads { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 13px 22px; border-radius: 12px; text-decoration: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+    font-weight: 600; min-width: 158px; border: 0;
+  }
+  .btn small { font-weight: 400; opacity: .82; font-size: 12.5px; }
+  .btn.ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .note { color: var(--dim); font-size: 14px; margin-top: 18px; }
+
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .lead { color: var(--dim); margin: 0 0 28px; }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 16.5px; }
+  .card p { margin: 0; color: var(--dim); font-size: 14.5px; }
+
+  .callout { background: var(--bg-soft); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; }
+  .callout p { margin: 0 0 8px; }
+  .callout p:last-child { margin: 0; }
+  code { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 13.5px; }
+  footer { border-top: 1px solid var(--border); padding: 30px 0 50px; color: var(--dim); font-size: 14px; }
+  footer a { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="brand"><img src="./icon.png" alt="" /> Lumina</span>
+    <nav>
+      <a href="https://github.com/Yusuf-web-droid/lumina">Source</a>
+      <a href="https://github.com/Yusuf-web-droid/lumina/releases/latest">Releases</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap hero">
+  <img class="mark" src="./icon.png" alt="The Lumina icon: a stroke of light curling into a sphere around a four-point star." />
+  <h1>A browser that gets out of the way</h1>
+  <p class="tag">Lumina is a minimal desktop web browser built on Electron and TypeScript. It blocks ads and trackers, pins your AI tools in a side panel, and hands the whole window to a game when you want it.</p>
+
+  <div class="downloads">
+    <a class="btn" href="https://github.com/Yusuf-web-droid/lumina/releases/latest"><span>Download for macOS</span><small>Apple Silicon or Intel · .dmg</small></a>
+    <a class="btn ghost" href="https://github.com/Yusuf-web-droid/lumina/releases/latest"><span>Windows</span><small>installer · .exe</small></a>
+    <a class="btn ghost" href="https://github.com/Yusuf-web-droid/lumina/releases/latest"><span>Linux</span><small>AppImage or .deb</small></a>
+  </div>
+  <p class="note">Free and open source under the MIT licence. No account, no telemetry, no auto-update phoning home.</p>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="lead">Four things that are not standard in a browser this small.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Blocks ads and trackers</h3>
+        <p>On by default, from a list bundled with the app rather than downloaded — so it works offline, on first launch, and without telling a third party what you browse. A shield in the toolbar counts what was stopped and who it belonged to.</p>
+      </div>
+      <div class="card">
+        <h3>AI tools in a side panel</h3>
+        <p>Gemini, ChatGPT and Claude pinned to an icon rail down the window's edge, each keeping its own live view so switching away never reloads the conversation. Pin any page, drag to reorder.</p>
+      </div>
+      <div class="card">
+        <h3>A real gaming mode</h3>
+        <p>⇧⌘G hands the entire window to the page: no tab strip, no toolbar, fullscreen, display sleep suspended and background throttling off. On cloud gaming services, Esc reaches the game's own menu instead of dropping you out.</p>
+      </div>
+      <div class="card">
+        <h3>A start page worth having</h3>
+        <p>A clock you can drag anywhere with three faces, weather, quick links, a to-do list, and your own photo behind it all.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Before you install</h2>
+    <div class="callout">
+      <p><strong>The builds are unsigned, so your system will warn about them.</strong> Code signing needs a paid Apple Developer membership and a Windows certificate, which this project does not have. The app is neither damaged nor malicious — every unsigned app is treated this way.</p>
+      <p><strong>macOS:</strong> right-click the app and choose <em>Open</em>, or clear the flag with <code>xattr -d com.apple.quarantine /Applications/Lumina.app</code>. <strong>Windows:</strong> SmartScreen → <em>More info</em> → <em>Run anyway</em>.</p>
+      <p><strong>The Windows and Linux builds are untested.</strong> They are built and packaged automatically, but nobody has yet run one. macOS is the platform that has actually been used. If a build misbehaves, <a href="https://github.com/Yusuf-web-droid/lumina/issues">open an issue</a>.</p>
+      <p>If you would rather trust nothing, <a href="https://github.com/Yusuf-web-droid/lumina#building-from-source">build it from source</a> — an app you compile yourself is never quarantined.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Built on</h2>
+    <p class="lead">Electron and TypeScript, wrapping Chromium rather than implementing a rendering engine — so real sites render exactly as they do in Chrome. Around 180 unit tests, a hand-written blocklist, and no third-party analytics of any kind.</p>
+    <p><a href="https://github.com/Yusuf-web-droid/lumina">Read the source on GitHub →</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Lumina — MIT licensed · <a href="https://github.com/Yusuf-web-droid/lumina">GitHub</a> · <a href="https://github.com/Yusuf-web-droid/lumina/blob/main/CHANGELOG.md">Changelog</a>
+  </div>
+</footer>
+
+</body>
+</html>
