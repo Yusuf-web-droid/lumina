@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Dev-only self-capture, enabled with NEXUS_SMOKE_CAPTURE=<dir>.
+ * Dev-only self-capture, enabled with LUMINA_SMOKE_CAPTURE=<dir>.
  *
  * Uses webContents.capturePage() rather than an external screenshot tool so it
  * works without macOS Screen Recording permission, and so it can run headless

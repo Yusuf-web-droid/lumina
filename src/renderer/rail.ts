@@ -1,12 +1,13 @@
-import type { NexusRailAPI, SidebarState, SidebarToolView } from '@shared/types'
+import { destinationAfterDrop } from '@shared/tabOrder'
+import type { LuminaRailAPI, SidebarState, SidebarToolView } from '@shared/types'
 
 declare global {
   interface Window {
-    nexusRail: NexusRailAPI
+    luminaRail: LuminaRailAPI
   }
 }
 
-const api = window.nexusRail
+const api = window.luminaRail
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id)
@@ -46,6 +47,9 @@ function paintIcon(button: HTMLButtonElement, tool: SidebarToolView): void {
     const img = document.createElement('img')
     img.src = tool.icon.src
     img.alt = ''
+    // Without this the browser drags the favicon itself and the reorder
+    // never starts.
+    img.draggable = false
     button.append(img)
     return
   }
@@ -62,9 +66,73 @@ function paintIcon(button: HTMLButtonElement, tool: SidebarToolView): void {
   button.textContent = (tool.name.trim()[0] ?? '?').toUpperCase()
 }
 
+/** Index of the tool being dragged, or -1 when no drag is in flight. */
+let dragFrom = -1
+
+function clearDropMarkers(): void {
+  for (const el of els.tools.querySelectorAll('.drop-before, .drop-after')) {
+    el.classList.remove('drop-before', 'drop-after')
+  }
+}
+
+/**
+ * Where the drop would insert, as a gap index in [0, length]: the pointer's
+ * half of the hovered icon decides whether it lands above or below it.
+ */
+function gapIndex(button: HTMLButtonElement, index: number, event: DragEvent): number {
+  const box = button.getBoundingClientRect()
+  return event.clientY < box.top + box.height / 2 ? index : index + 1
+}
+
+/** Wire one icon for dragging. Reorder is the only thing a drag can do. */
+function makeDraggable(button: HTMLButtonElement, index: number): void {
+  button.draggable = true
+
+  button.addEventListener('dragstart', (event) => {
+    dragFrom = index
+    button.classList.add('dragging')
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+      // A private type rather than text/plain: dropping a rail icon onto a
+      // page should do nothing, not paste an index into it.
+      event.dataTransfer.setData('application/x-lumina-tool', String(index))
+    }
+  })
+
+  button.addEventListener('dragover', (event) => {
+    if (dragFrom === -1) return
+    event.preventDefault()
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+    const gap = gapIndex(button, index, event)
+    clearDropMarkers()
+    // No marker where the drop would change nothing.
+    if (destinationAfterDrop(dragFrom, gap) === dragFrom) return
+    button.classList.add(gap === index ? 'drop-before' : 'drop-after')
+  })
+
+  button.addEventListener('dragleave', () => button.classList.remove('drop-before', 'drop-after'))
+
+  button.addEventListener('drop', (event) => {
+    event.preventDefault()
+    if (dragFrom === -1) return
+    const to = destinationAfterDrop(dragFrom, gapIndex(button, index, event))
+    const from = dragFrom
+    dragFrom = -1
+    clearDropMarkers()
+    if (to !== from) void api.reorder(from, to)
+  })
+
+  // Covers a drag abandoned outside the rail, where no drop ever fires.
+  button.addEventListener('dragend', () => {
+    dragFrom = -1
+    button.classList.remove('dragging')
+    clearDropMarkers()
+  })
+}
+
 function render(state: SidebarState): void {
   els.tools.replaceChildren(
-    ...state.tools.map((tool) => {
+    ...state.tools.map((tool, index) => {
       const button = document.createElement('button')
       button.className = tool.active ? 'tool active' : 'tool'
       button.type = 'button'
@@ -72,21 +140,16 @@ function render(state: SidebarState): void {
       button.setAttribute('role', 'tab')
       button.setAttribute('aria-selected', String(tool.active))
       button.setAttribute('aria-label', tool.name)
+      button.dataset['index'] = String(index)
       paintIcon(button, tool)
+      makeDraggable(button, index)
       button.addEventListener('click', () => void api.select(tool.url))
-
-      const unpin = document.createElement('button')
-      unpin.className = 'unpin'
-      unpin.type = 'button'
-      unpin.textContent = '×'
-      unpin.title = `Unpin ${tool.name}`
-      unpin.setAttribute('aria-label', `Unpin ${tool.name}`)
-      unpin.addEventListener('click', (event) => {
-        // Otherwise the click also selects the tool being removed.
-        event.stopPropagation()
-        void api.unpin(tool.url)
+      // Unpinning lives behind a right-click, not a hover badge: the badge sat
+      // on top of the icon you were aiming for and lost tools to stray clicks.
+      button.addEventListener('contextmenu', (event) => {
+        event.preventDefault()
+        void api.menu(tool.url)
       })
-      button.append(unpin)
 
       return button
     })

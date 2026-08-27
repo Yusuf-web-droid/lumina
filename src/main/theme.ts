@@ -14,7 +14,7 @@ export function isThemeSource(value: string): value is ThemeSource {
  *
  * Setting nativeTheme.themeSource is the whole mechanism: Chromium drives
  * prefers-color-scheme in every renderer from it, so the chrome UI and the
- * nexus:// pages both restyle themselves the moment it changes. Nothing needs
+ * lumina:// pages both restyle themselves the moment it changes. Nothing needs
  * to be pushed over IPC, and nothing needs reloading.
  */
 export class Theme {

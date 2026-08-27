@@ -1,4 +1,5 @@
 import { Menu, app, shell, type MenuItemConstructorOptions } from 'electron'
+import { blockerStore } from './blocker'
 import { THEME_SOURCES, themeStore } from './theme'
 import type { BrowserWindow } from './window'
 
@@ -7,8 +8,19 @@ import type { BrowserWindow } from './window'
  * WebContents holds focus, which is why navigation shortcuts live here rather
  * than being bound inside the chrome UI.
  */
+let lastGetWindow: (() => BrowserWindow | null) | null = null
+
+/**
+ * Redraw the menu so its checkboxes match state that changed from outside it —
+ * gaming mode, which can also be left by exiting fullscreen.
+ */
+export function rebuildMenu(): void {
+  if (lastGetWindow) buildMenu(lastGetWindow)
+}
+
 export function buildMenu(getWindow: () => BrowserWindow | null): void {
   const win = getWindow
+  lastGetWindow = getWindow
   const template: MenuItemConstructorOptions[] = [
     {
       label: app.name,
@@ -89,6 +101,31 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
           label: 'Toggle Side Panel',
           accelerator: 'CmdOrCtrl+J',
           click: () => win()?.toggleSidebar()
+        },
+        {
+          label: 'Games',
+          click: () => win()?.tabManager.create('lumina://home/games')
+        },
+        {
+          label: 'Gaming Mode',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          type: 'checkbox' as const,
+          checked: win()?.isGamingMode() ?? false,
+          // No rebuild here: setGamingMode redraws the menu itself, since the
+          // mode can also be left by exiting fullscreen.
+          click: () => win()?.toggleGamingMode()
+        },
+        { type: 'separator' },
+        {
+          label: 'Block Ads and Trackers',
+          type: 'checkbox' as const,
+          checked: blockerStore().enabled(),
+          // Same rebuild trick as Appearance below: a checkbox's state is a
+          // snapshot taken when the template was built.
+          click: () => {
+            blockerStore().setEnabled(!blockerStore().enabled())
+            buildMenu(getWindow)
+          }
         },
         { type: 'separator' },
         {

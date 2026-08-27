@@ -33,6 +33,18 @@ export function reorderList<T>(list: T[], from: number, to: number): T[] {
   return next
 }
 
+/**
+ * Translate a drag's insertion point into the `to` index `reorderList` wants.
+ *
+ * A drop is aimed at a *gap* — 0 is above the first item, `length` below the
+ * last — but `reorderList` removes the dragged item before inserting it, which
+ * shifts every gap past it up by one. Without this, dragging an item downward
+ * lands it one slot short.
+ */
+export function destinationAfterDrop(from: number, gap: number): number {
+  return gap > from ? gap - 1 : gap
+}
+
 /** Resolve a ⌘1–⌘9 shortcut. Index 8 means "last tab", as Chrome does. */
 export function indexForShortcut(shortcutIndex: number, length: number): number {
   if (length === 0) return -1

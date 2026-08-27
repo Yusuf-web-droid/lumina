@@ -81,7 +81,7 @@ export class Favicons {
     return existsSync(full) ? full : null
   }
 
-  /** The cached icon as an HTTP response, for the nexus://icon route. */
+  /** The cached icon as an HTTP response, for the lumina://icon route. */
   response(host: string): Response {
     const path = HOST.test(host) ? this.path(`https://${host}`) : null
     if (!path) return new Response('No icon', { status: 404 })
@@ -96,7 +96,7 @@ export class Favicons {
     }
   }
 
-  /** The cached icon inlined, for windows the nexus:// scheme is not served to. */
+  /** The cached icon inlined, for windows the lumina:// scheme is not served to. */
   dataUrl(url: string): string | null {
     const path = this.path(url)
     if (!path) return null

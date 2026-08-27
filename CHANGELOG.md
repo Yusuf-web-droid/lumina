@@ -2,12 +2,107 @@
 
 ## Unreleased
 
+### The clock moves, and changes face
+
+- **Drag the start page's clock wherever you want it.** It stays where you drop
+  it, across restarts, and keeps its place proportionally when the window is
+  resized rather than sliding off the edge. **Reset position** in its menu puts
+  it back.
+- **Three faces**, from the cog that appears when you hover the clock: the
+  original **Minimal** digits, **Big Ben** — the Great Clock's cream-and-gilt
+  dial, Roman numerals with `IV`, and no second hand, as the real one has none —
+  and **Retro**, an amber segment display with unlit segments showing faintly
+  behind the time.
+- 12-hour and 24-hour moved into that menu as well, and clicking the time still
+  switches it. An existing 12-hour preference carries over.
+
+### Games
+
+- **A games page**, from the 🎮 Games button on the start page or View → Games. Every
+  entry plays in a browser tab, grouped by what it asks of you first: things that open
+  and play immediately with no account, full console and PC games streamed from a
+  service you subscribe to, and catalogues holding thousands more.
+- **Minecraft Classic is in there** — Mojang's original 2009 version, free and complete
+  in the browser. Minecraft Java and Bedrock are native applications and cannot run in
+  a browser at all; streaming is the only way to reach a modern Minecraft from here.
+- **Minecraft: Java Edition** has its own tile under "Not a browser game". Its launcher's
+  version list plays any release ever made, 2013's 1.5.2 and 1.6.4 included, but it
+  installs on your Mac rather than running in a tab.
+- Opening a game **switches gaming mode on for you**, so it starts with the browser out
+  of the way. Esc gives you the browser back. Tiles that only lead to a download link
+  straight out instead, since there is no game to hand the window to.
+
+### Gaming mode
+
+- **View → Gaming Mode (⇧⌘G) hands the whole window to the page.** Tab strip, toolbar
+  and side panel go away, the window goes fullscreen, and the game gets every pixel.
+- **The display will not sleep** while it is on — a game you are watching rather than
+  typing into no longer dims mid-cutscene.
+- **Background tabs stop being throttled**, so alt-tabbing to Discord does not stall
+  what is running. Chromium otherwise pauses timers and animations in a window that
+  is not in front, which browser games read as a cue to pause themselves.
+- **Cloud gaming services work properly.** On GeForce NOW, Xbox Cloud Gaming, Amazon
+  Luna, Boosteroid and Shadow, Lumina grants keyboard lock, so Esc opens the game's
+  own menu instead of throwing you out of fullscreen, and the ad blocker stands down,
+  since a stream's session traffic is hard to tell from telemetry and cancelling the
+  wrong request ends the game rather than hiding an advert. The shield says so when
+  it happens. Nothing is granted anywhere else on the web.
+- Entering the mode hands keyboard focus to the page, so a game gets your input
+  without needing to be clicked first.
+- Leaving fullscreen by any route — Esc, the green button, Mission Control — leaves
+  gaming mode too, so you are never stuck in a window with no toolbar. Whatever the
+  side panel was doing beforehand comes back with it.
+
+### Ad and tracker blocking
+
+- **Lumina now blocks ads and trackers**, on by default. A shield in the toolbar counts
+  what was blocked on the page and lists who it belonged to.
+- The list is bundled, not downloaded — blocking works offline, on first launch, and
+  without telling any third party what you browse. It is hand-written rather than taken
+  from EasyList or Tracker Radar, which are GPL and CC BY-NC-SA respectively and would
+  conflict with this project's MIT licence.
+- Pages are protected from over-blocking: a top-level navigation is never cancelled, a
+  site can always reach its own domains (including a second domain owned by the same
+  company), and side-panel tools are never touched.
+- Click the shield → **Turn off for this site** when something breaks; it reloads and
+  persists, and covers every subdomain. **View → Block Ads and Trackers** switches it off
+  everywhere.
+
+### Security
+
+- **Closed a privilege hole in the `lumina://` scheme.** Any web page could navigate
+  itself to a privileged route: `location = 'lumina://home/background/choose'` opened a
+  native file dialog, and other routes silently changed the theme, wallpaper and dim
+  level. Three independent guards now stop it — page-initiated navigation to `lumina:`
+  is allowed only from `lumina:` itself, every response carries a CSP with
+  `frame-ancestors 'none'` (the iframe route, which a `will-navigate` guard cannot see),
+  and every route that changes state requires a per-run token. Read-only routes are
+  unchanged, so a bookmarked `lumina://home/background` still works.
+- Side-panel tools now get the same navigation filter tabs have, and a pinned tool's URL
+  is re-checked when it is read back from disk instead of being trusted.
+- The `lumina://` router moved into its own module so it could be tested. The suite grew
+  from 63 to 98 tests.
+
+### Renamed to Lumina
+
+- The browser is now called Lumina. The app, the bundle id, the internal `lumina://`
+  scheme and the DMG all follow.
+- A new mark: a stroke of light curling into a sphere around a four-point star, violet
+  into blue on a near-white tile. Replaces the node-graph N.
+- Your profile moves across on first launch — bookmarks, history, tabs, cookies and
+  logins all survive the rename. The one thing that does not is the start page's widget
+  state (to-do items, 12/24-hour clock, °C/°F), which browser storage keys to the
+  `nexus://` origin that no longer exists. The weather place is kept, since that is
+  stored by the app rather than the page.
+
 ### Side panel
 
 - The side panel (⌘J) now hosts several pinned tools instead of just Gemini, switched
   from an icon rail down the window's right edge. Ships with Gemini, ChatGPT and Claude.
-- Pin the page you are on with the rail's + button, unpin from the badge on a tool's
-  icon. Pinned tools and the last one you used persist across launches.
+- Pin the page you are on with the rail's + button, unpin from a tool's right-click
+  menu. Pinned tools and the last one you used persist across launches.
+- **Drag the icons to reorder them.** A line shows where the tool will land, the order
+  is kept across launches, and dragging never reloads the tool you move.
 - Each tool keeps its own live view, so switching away and back does not reload the
   conversation. Tools share the tabs' session, so one sign-in covers both.
 

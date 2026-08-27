@@ -1,8 +1,10 @@
+import { DIRECT_LINK_SECTIONS, GAME_SECTIONS, gamesIn, type Game } from '@shared/games'
 import type { QuickLink, QuickLinkIcon } from '@shared/types'
 import type { BackgroundKind } from './background'
 import { BACKGROUND_PRESETS } from './backgroundPresets'
 import type { ThemeSource } from './theme'
 import { forestScene } from './scene'
+import { signRoute } from './pageToken'
 import { widgetDock, widgetOverlays, widgetScript, widgetStyles } from './widgets'
 
 /** Palette for the fallback letter tiles, chosen deterministically from the URL. */
@@ -71,7 +73,7 @@ function isRenderable(url: string): boolean {
 }
 
 /**
- * The start page, generated in the main process and served over the nexus://
+ * The start page, generated in the main process and served over the lumina://
  * scheme. Built as a plain document with ordinary <a> and <form> elements, so
  * it needs no preload and no IPC bridge — tabs stay fully sandboxed.
  */
@@ -209,7 +211,7 @@ export function renderStartPage(
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-image: url('nexus://bg/current');
+    background-image: url('lumina://bg/current');
     background-size: cover;
     background-position: center;
   }
@@ -378,6 +380,19 @@ export function renderStartPage(
     color: var(--fg-faint);
   }
 
+  /* A real button rather than another line in the hint: the games page is a
+     place to go, not a keyboard shortcut to remember. */
+  .games-link {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--tile-border, rgba(255, 255, 255, 0.18));
+    background: var(--tile-bg, rgba(255, 255, 255, 0.1));
+    color: inherit; text-decoration: none; font-size: 13.5px; font-weight: 500;
+    backdrop-filter: blur(12px);
+  }
+
+  .games-link:hover { border-color: rgba(255, 255, 255, 0.45); }
+
   .empty { color: var(--fg-dim); }
 ${widgetStyles()}
 </style>
@@ -405,6 +420,7 @@ ${widgetStyles()}
 ${tiles || '<p class="empty">No quick links yet — add some from the ⊞ button in the toolbar.</p>'}
   </div>
 
+  <a class="games-link" href="lumina://home/games">🎮 Games</a>
   <p class="hint">Press ⌘⇧A to edit these links · ⌘J for Gemini</p>
 
   ${widgetOverlays()}
@@ -412,7 +428,7 @@ ${tiles || '<p class="empty">No quick links yet — add some from the ⊞ button
   <div class="dock">
     ${widgetDock()}
     <span class="dock-sep"></span>
-    <a class="customise" href="nexus://home/background" title="Appearance and background"
+    <a class="customise" href="lumina://home/background" title="Appearance and background"
        aria-label="Appearance and background">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10 2.5a7.5 7.5 0 1 0 0 15c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6h1.9a3.2 3.2 0 0 0 3.2-3.2C17.5 5.4 14.1 2.5 10 2.5z"/>
@@ -435,6 +451,8 @@ ${tiles || '<p class="empty">No quick links yet — add some from the ⊞ button
 
 /** Appearance and background, reached from the dock on the start page. */
 export function renderBackgroundPage(background: BackgroundOptions, theme: ThemeSource): string {
+  // Every option on this page changes state when followed, so every one carries
+  // the per-run token the router requires. See ./pageToken.
   const option = (
     href: string,
     title: string,
@@ -442,7 +460,7 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
     preview: string,
     active: boolean
   ): string =>
-    `<a class="opt${active ? ' active' : ''}" href="${esc(href)}">
+    `<a class="opt${active ? ' active' : ''}" href="${esc(signRoute(href))}">
        <span class="opt-preview" style="${preview}"></span>
        <span class="opt-text"><strong>${esc(title)}</strong><span>${esc(description)}</span></span>
      </a>`
@@ -527,21 +545,21 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
 
   <div class="opts">
     ${option(
-      'nexus://home/appearance/system',
+      'lumina://home/appearance/system',
       'Match System',
       'Follow the macOS light or dark setting',
       'background:linear-gradient(120deg,#f4f6fa 0 50%,#12161d 50% 100%)',
       theme === 'system'
     )}
     ${option(
-      'nexus://home/appearance/light',
+      'lumina://home/appearance/light',
       'Light',
       'Always light, whatever macOS is set to',
       'background:linear-gradient(160deg,#ffffff,#e4e8f0)',
       theme === 'light'
     )}
     ${option(
-      'nexus://home/appearance/dark',
+      'lumina://home/appearance/dark',
       'Dark',
       'Always dark, whatever macOS is set to',
       'background:linear-gradient(160deg,#262d38,#0d1117)',
@@ -554,33 +572,33 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
   <div class="opts">
     ${BACKGROUND_PRESETS.map((preset) =>
       option(
-        `nexus://home/background/preset/${preset.id}`,
+        `lumina://home/background/preset/${preset.id}`,
         preset.name,
         preset.description,
-        `background-image:url('nexus://bg/preset/${preset.id}')`,
+        `background-image:url('lumina://bg/preset/${preset.id}')`,
         background.kind === 'image' && background.preset === preset.id
       )
     ).join('\n    ')}
     ${option(
-      'nexus://home/background/choose',
+      'lumina://home/background/choose',
       'Choose a photo…',
       background.preset === null && background.hasImage
         ? 'Pick a different image from your Mac'
         : 'Pick an image from your Mac',
       background.preset === null && background.hasImage
-        ? "background-image:url('nexus://bg/current')"
+        ? "background-image:url('lumina://bg/current')"
         : 'background:linear-gradient(135deg,#3b82f6,#8b5cf6)',
       background.kind === 'image' && background.preset === null
     )}
     ${option(
-      'nexus://home/background/scene',
+      'lumina://home/background/scene',
       'Forest path',
       'The built-in illustrated scene',
       'background:linear-gradient(180deg,#20415a,#5b8698 45%,#4f6544)',
       background.kind === 'scene'
     )}
     ${option(
-      'nexus://home/background/plain',
+      'lumina://home/background/plain',
       'Plain',
       'No image — a gradient that follows the appearance',
       'background:linear-gradient(120deg,#eef1f5 0 50%,#101726 50% 100%)',
@@ -596,7 +614,7 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
              ${[0, 25, 45, 65]
                .map(
                  (d) =>
-                   `<a class="${background.dim === d ? 'active' : ''}" href="nexus://home/background/dim/${d}">${d === 0 ? 'None' : `${d}%`}</a>`
+                   `<a class="${background.dim === d ? 'active' : ''}" href="${esc(signRoute(`lumina://home/background/dim/${d}`))}">${d === 0 ? 'None' : `${d}%`}</a>`
                )
                .join('')}
            </div>
@@ -604,7 +622,118 @@ export function renderBackgroundPage(background: BackgroundOptions, theme: Theme
       : ''
   }
 
-  <a class="back" href="nexus://home">← Back to start page</a>
+  <a class="back" href="lumina://home">← Back to start page</a>
+</body>
+</html>`
+}
+
+/**
+ * The games page: everything here plays in a tab, grouped by what it asks of
+ * you before it will start.
+ *
+ * Each tile goes through the token-signed play route rather than straight to
+ * the game, so opening one can switch gaming mode on for you — the point of
+ * the page is to get out of the browser's way and into the game.
+ */
+export function renderGamesPage(): string {
+  const tile = (game: Game): string =>
+    // A desktop download links straight out: there is no game to hand the
+    // window to, and gaming mode would only hide the browser you still need.
+    `<a class="game" href="${esc(
+      DIRECT_LINK_SECTIONS.has(game.section)
+        ? game.url
+        : signRoute(`lumina://home/games/play/${game.id}`)
+    )}">
+       <span class="game-name">${esc(game.name)}</span>
+       <span class="game-blurb">${esc(game.blurb)}</span>
+       ${game.needsAccount ? '<span class="game-note">Account needed</span>' : ''}
+     </a>`
+
+  const section = (id: string, title: string, note: string): string => {
+    const games = gamesIn(id as Game['section'])
+    if (games.length === 0) return ''
+    return `<section>
+      <h2>${esc(title)}</h2>
+      <p class="note">${esc(note)}</p>
+      <div class="grid">${games.map(tile).join('')}</div>
+    </section>`
+  }
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Games</title>
+<style>
+  :root {
+    --bg: linear-gradient(160deg, #121a2b 0%, #0a0e17 100%);
+    --fg: #eef1f7;
+    --fg-dim: rgba(255, 255, 255, 0.6);
+    --opt: rgba(255, 255, 255, 0.05);
+    --opt-hover: rgba(255, 255, 255, 0.11);
+    --opt-border: rgba(255, 255, 255, 0.12);
+    --opt-border-hover: rgba(255, 255, 255, 0.28);
+    --accent: #6ea8ff;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: linear-gradient(160deg, #f5f7fb 0%, #e6eaf2 100%);
+      --fg: #10151c;
+      --fg-dim: rgba(16, 21, 28, 0.62);
+      --opt: rgba(255, 255, 255, 0.8);
+      --opt-hover: #fff;
+      --opt-border: rgba(15, 23, 36, 0.12);
+      --opt-border-hover: rgba(15, 23, 36, 0.28);
+      --accent: #2f6fd0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 28px; padding: 48px 24px 64px;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  header { text-align: center; max-width: 620px; }
+  h1 { margin: 0 0 8px; font-size: 28px; font-weight: 600; }
+  header p { margin: 0; color: var(--fg-dim); font-size: 13.5px; }
+  section { width: min(880px, 100%); }
+  h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+  .note { margin: 0 0 14px; color: var(--fg-dim); font-size: 12.5px; }
+  .grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+  .game {
+    display: flex; flex-direction: column; gap: 4px; padding: 14px;
+    border: 1px solid var(--opt-border); border-radius: 14px;
+    background: var(--opt); color: inherit; text-decoration: none;
+  }
+  .game:hover { background: var(--opt-hover); border-color: var(--opt-border-hover); }
+  .game-name { font-weight: 600; }
+  .game-blurb { font-size: 12.5px; color: var(--fg-dim); }
+  .game-note {
+    align-self: flex-start; margin-top: 4px; padding: 2px 7px;
+    border-radius: 999px; font-size: 11px;
+    border: 1px solid var(--opt-border); color: var(--fg-dim);
+  }
+  .back { margin-top: 4px; color: var(--accent); text-decoration: none; font-size: 13px; }
+  .back:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Games</h1>
+    <p>Everything here plays in a tab. Opening one switches on gaming mode —
+       the browser gets out of the way, and the display will not sleep.
+       Press Esc to come back.</p>
+  </header>
+  ${GAME_SECTIONS.map((s) => section(s.id, s.title, s.note)).join('')}
+  <a class="back" href="lumina://home">← Back to start page</a>
 </body>
 </html>`
 }

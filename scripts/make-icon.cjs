@@ -18,7 +18,8 @@
  *   2. Crops it square with breathing room, keying the source's flat backdrop
  *      out to alpha so the mark can sit on any body colour.
  *   3. Insets it into the Big Sur icon grid: an 824x824 rounded body, corner
- *      radius 185, centred on a transparent 1024x1024 canvas.
+ *      radius 185, centred on a transparent 1024x1024 canvas. The corner is a
+ *      superellipse, anti-aliased, to match the continuous curve macOS uses.
  *   4. Emits every size macOS asks for and runs iconutil.
  */
 const { app, nativeImage } = require('electron')
@@ -28,13 +29,34 @@ const { join, resolve } = require('node:path')
 
 const CANVAS = 1024
 const BODY = 824 // Apple's icon-grid body size within a 1024 canvas
-const RADIUS = 185
 const MARK_FILL = 0.66 // fraction of the body the mark occupies
+
+// Corner shape, as radius and superellipse exponent. Apple's own grid is
+// 185/5, but that is squarer than it sounds: the higher the exponent, the more
+// the curve bulges towards the corner point, so 185/5 leaves 600 of the 824
+// edge flat and reads as a hard corner at dock sizes. 290/3 rounds it visibly
+// while keeping the curvature continuous into the straight edge.
+const CORNER = { radius: 290, exponent: 3 }
 
 const SRC = resolve(process.argv[2] ?? '')
 const BACKDROP_ARG = (() => {
   const at = process.argv.indexOf('--backdrop')
   return at > -1 ? process.argv[at + 1] : null
+})()
+
+/** `--corner 290` or `--corner 290,3` -> the body's corner radius and exponent. */
+const CORNER_ARG = (() => {
+  const at = process.argv.indexOf('--corner')
+  if (at < 0) return null
+
+  const [radius, exponent] = String(process.argv[at + 1] ?? '').split(',').map(Number)
+  if (!Number.isFinite(radius) || radius <= 0 || radius > BODY / 2) {
+    throw new Error(`--corner radius must be between 1 and ${BODY / 2}`)
+  }
+  if (exponent !== undefined && (!Number.isFinite(exponent) || exponent < 2)) {
+    throw new Error('--corner exponent must be 2 (a circular arc) or more')
+  }
+  return { radius, exponent: exponent ?? CORNER.exponent }
 })()
 const OUT_DIR = resolve(__dirname, '..', 'resources')
 const ICONSET = join(OUT_DIR, 'icon.iconset')
@@ -199,20 +221,59 @@ function keyOutBackdrop(bitmap, size, key) {
   }
 }
 
-/** Zero the alpha of every pixel outside a rounded rectangle. */
-function applyRoundedMask(bitmap, size, radius) {
-  const inCorner = (x, y, cx, cy) => (x - cx) ** 2 + (y - cy) ** 2 > radius ** 2
+/**
+ * Zero the alpha of every pixel outside the icon's rounded body.
+ *
+ * Two things a plain in-or-out test gets wrong. It steps the corner in whole
+ * pixels, so the 1024 master has a visibly ragged edge wherever the curve is
+ * near 45 degrees; coverage is sampled on a 4x4 grid per pixel instead, which
+ * puts real alpha on the boundary. And a circular arc meets the straight edge
+ * at a jump in curvature, which is what reads as a sharp corner — so the
+ * corner is a superellipse, whose curvature eases into the straight edge
+ * rather than starting at full bend. Radius and exponent come from CORNER; the
+ * shape stays a square with rounded corners, never a circle, as long as the
+ * radius is well under half the body.
+ */
+function applyRoundedMask(bitmap, size, { radius, exponent }) {
+  const SAMPLES = 4
+
+  /**
+   * How far into a corner a point sits, per axis, as 0 at the corner square's
+   * inner edge and 1 at the body's edge. Zero on either axis means the point
+   * is beside a straight edge, not in a corner at all.
+   */
+  const isInside = (x, y) => {
+    const u = x < radius ? (radius - x) / radius : x > size - radius ? (x - size + radius) / radius : 0
+    const v = y < radius ? (radius - y) / radius : y > size - radius ? (y - size + radius) / radius : 0
+    if (u <= 0 || v <= 0) return true
+    return u ** exponent + v ** exponent <= 1
+  }
 
   for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let outside = false
-      if (x < radius && y < radius) outside = inCorner(x, y, radius, radius)
-      else if (x >= size - radius && y < radius) outside = inCorner(x, y, size - radius - 1, radius)
-      else if (x < radius && y >= size - radius) outside = inCorner(x, y, radius, size - radius - 1)
-      else if (x >= size - radius && y >= size - radius)
-        outside = inCorner(x, y, size - radius - 1, size - radius - 1)
+    const inCornerRow = y < radius || y >= size - radius
+    if (!inCornerRow) continue
 
-      if (outside) bitmap[(y * size + x) * 4 + 3] = 0
+    for (let x = 0; x < size; x++) {
+      if (x >= radius && x < size - radius) continue
+
+      let covered = 0
+      for (let sy = 0; sy < SAMPLES; sy++) {
+        for (let sx = 0; sx < SAMPLES; sx++) {
+          if (isInside(x + (sx + 0.5) / SAMPLES, y + (sy + 0.5) / SAMPLES)) covered++
+        }
+      }
+
+      // Premultiplied, not just the alpha channel. nativeImage buffers are
+      // premultiplied, so a pixel left at white under a reduced alpha is
+      // invalid, and resize() clamps it back to fully opaque — which silently
+      // squares off every size in the iconset while the 1024 master still
+      // looks correctly rounded.
+      const coverage = covered / (SAMPLES * SAMPLES)
+      const i = (y * size + x) * 4
+      bitmap[i] = Math.round(bitmap[i] * coverage)
+      bitmap[i + 1] = Math.round(bitmap[i + 1] * coverage)
+      bitmap[i + 2] = Math.round(bitmap[i + 2] * coverage)
+      bitmap[i + 3] = Math.round(bitmap[i + 3] * coverage)
     }
   }
 }
@@ -295,7 +356,7 @@ async function main() {
     }
   }
 
-  applyRoundedMask(bodyBitmap, BODY, RADIUS)
+  applyRoundedMask(bodyBitmap, BODY, CORNER_ARG ?? CORNER)
 
   // Compose onto the transparent 1024 canvas.
   const canvas = Buffer.alloc(CANVAS * CANVAS * 4, 0)

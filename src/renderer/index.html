@@ -6,7 +6,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:"
     />
-    <title>Nexus</title>
+    <title>Lumina</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -62,6 +62,14 @@
           </button>
         </div>
 
+        <button id="shield-btn" class="icon-btn" title="Ad and tracker blocking"
+                aria-label="Ad and tracker blocking" aria-expanded="false">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 1.75l4.75 1.6v4.4c0 3-1.9 5.3-4.75 6.5C5.15 13.05 3.25 10.75 3.25 7.75v-4.4z" />
+          </svg>
+          <span id="shield-count" hidden></span>
+        </button>
+
         <button id="apps-btn" class="icon-btn" title="Quick links (⌘⇧A)" aria-label="Quick links">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <rect x="2.5" y="2.5" width="4" height="4" rx="1" />
@@ -116,6 +124,15 @@
           <input id="apps-url" class="apps-field" type="text" placeholder="example.com" aria-label="Site address" />
           <button class="apps-add-btn" type="submit" aria-label="Add site">Add</button>
         </form>
+      </div>
+
+      <div id="shield-panel" hidden>
+        <header>
+          <span id="shield-title">Blocking</span>
+        </header>
+        <ul id="shield-list"></ul>
+        <p id="shield-empty">Nothing blocked on this page.</p>
+        <button id="shield-toggle" class="text-btn">Turn off for this site</button>
       </div>
 
       <div id="downloads-panel" hidden>

@@ -1,5 +1,6 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type {
+  BlockingDetails,
   Bookmark,
   QuickLink,
   QuickLinkIcon,
@@ -114,7 +115,7 @@ export function registerIPC(getWindow: Getter): void {
   handle(IPC.QuickLinksIcons, (_win, urls: string[]): Record<string, QuickLinkIcon> => {
     const icons: Record<string, QuickLinkIcon> = {}
     for (const url of urls) {
-      // Inlined: the app chrome is not served the nexus:// scheme.
+      // Inlined: the app chrome is not served the lumina:// scheme.
       const icon = siteIcon(url, true)
       if (icon) icons[url] = icon
     }
@@ -131,12 +132,21 @@ export function registerIPC(getWindow: Getter): void {
   })
   handle(IPC.QuickLinksReset, (win) => win.quickLinkStore.reset())
 
+  // --------------------------------------------------------------- blocking
+  // toggleSite takes no argument on purpose: main reads the active tab itself,
+  // so the chrome can never name an arbitrary site to allowlist.
+  handle(IPC.BlockingDetails, (win): BlockingDetails => win.blockingDetails())
+  handle(IPC.BlockingToggleSite, (win) => win.toggleBlockingForActiveTab())
+
   // ---------------------------------------------------------------- sidebar
   handle(IPC.SidebarToggle, (win) => win.toggleSidebar())
 
   handleRail(IPC.SidebarToolsList, (win): SidebarState => win.sidebarState())
   handleRail(IPC.SidebarToolsSelect, (win, url: string) => win.selectSidebarTool(url))
-  handleRail(IPC.SidebarToolsUnpin, (win, url: string) => win.unpinSidebarTool(url))
+  handleRail(IPC.SidebarToolsMenu, (win, url: string) => win.showSidebarToolMenu(url))
+  handleRail(IPC.SidebarToolsReorder, (win, from: number, to: number) => {
+    win.reorderSidebarTools(from, to)
+  })
   handleRail(IPC.SidebarToolsPinCurrent, (win) => win.pinActiveTabAsTool())
   handleRail(IPC.SidebarReload, (win) => win.reloadSidebar())
   handleRail(IPC.SidebarClose, (win) => win.closeSidebar())

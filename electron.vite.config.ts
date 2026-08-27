@@ -11,7 +11,7 @@ const shared = resolve(__dirname, 'src/shared')
  * built-ins only — it cannot load a sibling file. Rollup hoists any module
  * two entries share into a chunk, so the moment a second preload imported
  * @shared/types both preloads started requiring ./chunks/types-*.js, failed
- * with "module not found", and silently left window.nexus undefined.
+ * with "module not found", and silently left window.lumina undefined.
  *
  * Rollup will not duplicate a module shared by two entries, but it will happily
  * inline one that looks distinct — so resolve @shared to a per-entry id and let
@@ -21,7 +21,7 @@ function isolatePreloadShared(): Plugin {
   const TAG = 'preload-copy'
 
   return {
-    name: 'nexus:isolate-preload-shared',
+    name: 'lumina:isolate-preload-shared',
     enforce: 'pre',
     apply: 'build',
     resolveId(source, importer) {

@@ -114,6 +114,33 @@ body {
   transform: translateY(-50%);
 }
 
+/* ------------------------------------------------------- drag to reorder */
+
+.tool.dragging {
+  opacity: 0.4;
+}
+
+/* The insertion marker sits inside the icon's own box: `.tool` clips its
+   overflow, so a bar drawn in the gap between icons would not survive. */
+.tool.drop-before::after,
+.tool.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.tool.drop-before::after {
+  top: 0;
+}
+
+.tool.drop-after::after {
+  bottom: 0;
+}
+
 .tool img,
 .tool svg {
   width: 22px;
@@ -124,28 +151,6 @@ body {
 .tool svg {
   fill: currentColor;
   stroke: none;
-}
-
-/* Unpin affordance: a corner badge that only appears on hover. */
-.unpin {
-  position: absolute;
-  top: -1px;
-  right: -1px;
-  width: 15px;
-  height: 15px;
-  padding: 0;
-  border: none;
-  border-radius: 0 8px 0 8px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 10px;
-  line-height: 15px;
-  cursor: default;
-  display: none;
-}
-
-.tool:hover .unpin {
-  display: block;
 }
 
 /* ---------------------------------------------------------------- actions */

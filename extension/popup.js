@@ -1,5 +1,5 @@
 /**
- * Nexus Assistant popup.
+ * Lumina Assistant popup.
  *
  * Three views share one popup: a Claude-backed chat, a quick-links launcher,
  * and settings. State lives in chrome.storage.local, because a popup is torn
@@ -26,7 +26,7 @@ const MAX_TOKENS = 16000
 const HISTORY_TURNS = 20
 
 const SYSTEM_PROMPT =
-  'You are Nexus, a helpful assistant living in a small browser-extension popup. ' +
+  'You are Lumina, a helpful assistant living in a small browser-extension popup. ' +
   'Answer directly and keep responses short — usually a few sentences. ' +
   'Use plain text; the popup does not render Markdown.'
 

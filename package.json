@@ -1,5 +1,5 @@
 {
-  "name": "nexus",
+  "name": "lumina",
   "version": "0.1.0",
   "description": "A minimal desktop web browser built on Electron",
   "main": "./out/main/index.js",

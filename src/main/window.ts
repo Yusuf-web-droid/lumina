@@ -1,6 +1,7 @@
 import { BaseWindow, WebContentsView, type Rectangle, type WebContents } from 'electron'
 import { join } from 'node:path'
 import type {
+  BlockingDetails,
   BrowserSnapshot,
   DownloadEntry,
   FindResult,
@@ -10,8 +11,11 @@ import type {
 import { IPC } from '@shared/types'
 import { Bookmarks } from './bookmarks'
 import { attachContextMenu } from './contextMenu'
+import { blockerStore } from './blocker'
 import { Downloads } from './downloads'
 import { faviconStore } from './favicons'
+import { KeepAwake } from './gaming'
+import { rebuildMenu } from './menu'
 import { History } from './history'
 import { Permissions } from './permissions'
 import { QuickLinks, quickLinksStore } from './quickLinks'
@@ -25,7 +29,7 @@ import { weatherStore } from './weather'
 /** Tab strip (40) + toolbar (44). The page always starts below this line. */
 export const BASE_CHROME_HEIGHT = 84
 
-export const HOME_URL = 'nexus://home'
+export const HOME_URL = 'lumina://home'
 
 const MIN_ZOOM = -3
 const MAX_ZOOM = 5
@@ -55,6 +59,10 @@ export class BrowserWindow {
   private readonly sessionStore: JSONStore<SessionData>
   private readonly sidebar: Sidebar
   private chromeHeight = BASE_CHROME_HEIGHT
+  private gaming = false
+  private readonly keepAwake = new KeepAwake()
+  /** What to put back on the way out. Null whenever gaming mode is off. */
+  private gamingRestore: { sidebarOpen: boolean; wasFullScreen: boolean } | null = null
   /** Last URL the rail was told about, so it is not repainted needlessly. */
   private lastRailURL: string | null = null
   private disposed = false
@@ -74,7 +82,7 @@ export class BrowserWindow {
         : {}),
       minWidth: 560,
       minHeight: 400,
-      title: 'Nexus',
+      title: 'Lumina',
       titleBarStyle: 'hiddenInset', // keeps the macOS traffic lights, drops the title bar
       backgroundColor: '#f6f6f7',
       show: false
@@ -98,8 +106,13 @@ export class BrowserWindow {
       onTitleUpdated: (url, title) => this.history.updateTitle(url, title),
       contentBounds: () => this.contentBounds(),
       onTabCreated: (wc) => this.decorateTab(wc),
+      blockState: (id) => blockerStore().stateFor(id),
       homeURL: HOME_URL
     })
+
+    // The blocker repaints the shield when a burst of requests is cancelled.
+    blockerStore().setOnChange(() => this.broadcastSnapshot())
+    blockerStore().attach()
 
     this.sidebar = new Sidebar(this.window, () => {
       this.layout()
@@ -116,7 +129,13 @@ export class BrowserWindow {
     this.loadChrome()
     this.window.on('resize', () => this.layout())
     this.window.on('enter-full-screen', () => this.layout())
-    this.window.on('leave-full-screen', () => this.layout())
+    this.window.on('leave-full-screen', () => {
+      // Esc, the green button, Mission Control — however the user got out of
+      // fullscreen, they are asking for the browser back. Without this they
+      // would be left in a window with no toolbar and no tab strip.
+      if (this.gaming) this.setGamingMode(false)
+      else this.layout()
+    })
     this.window.on('close', () => this.persistSession())
     this.window.on('closed', () => this.dispose())
 
@@ -127,7 +146,7 @@ export class BrowserWindow {
       this.broadcastSnapshot()
       this.send<DownloadEntry[]>(IPC.OnDownloads, this.downloads.list())
 
-      const smokeDir = process.env['NEXUS_SMOKE_CAPTURE']
+      const smokeDir = process.env['LUMINA_SMOKE_CAPTURE']
       if (smokeDir) this.scheduleSmokeCapture(smokeDir)
     })
   }
@@ -152,6 +171,7 @@ export class BrowserWindow {
   /** Per-tab setup that needs main-process collaborators. */
   private decorateTab(wc: WebContents): void {
     attachContextMenu(wc, () => this.tabs)
+    blockerStore().watch(wc)
     wc.on('found-in-page', (_e, result) => {
       this.send<FindResult>(IPC.OnFindResult, {
         activeMatchOrdinal: result.activeMatchOrdinal,
@@ -162,21 +182,31 @@ export class BrowserWindow {
 
   // ------------------------------------------------------------------- layout
 
+  /**
+   * Height reserved for the chrome at the top of the window. Zero in gaming
+   * mode, where the page owns every pixel.
+   */
+  private topInset(): number {
+    return this.gaming ? 0 : BASE_CHROME_HEIGHT
+  }
+
   /** The page rect. Fixed to below the base chrome, independent of overlays. */
   private contentBounds(): Rectangle {
     const { width, height } = this.window.getContentBounds()
+    const top = this.topInset()
     return {
       x: 0,
-      y: BASE_CHROME_HEIGHT,
+      y: top,
       // The page yields horizontal space to the panel rather than being covered.
       width: Math.max(0, width - this.sidebar.currentWidth()),
-      height: Math.max(0, height - BASE_CHROME_HEIGHT)
+      height: Math.max(0, height - top)
     }
   }
 
   /** The only place view bounds are assigned. Called from every resize event. */
   private layout(): void {
     const { width, height } = this.window.getContentBounds()
+    const top = this.topInset()
     this.chromeView.setBounds({
       x: 0,
       y: 0,
@@ -187,9 +217,9 @@ export class BrowserWindow {
     if (sidebarWidth > 0) {
       this.sidebar.setBounds({
         x: Math.max(0, width - sidebarWidth),
-        y: BASE_CHROME_HEIGHT,
+        y: top,
         width: sidebarWidth,
-        height: Math.max(0, height - BASE_CHROME_HEIGHT)
+        height: Math.max(0, height - top)
       })
     }
     this.tabs.layout()
@@ -218,6 +248,7 @@ export class BrowserWindow {
     faviconStore().flush()
     weatherStore().flush()
     themeStore().flush()
+    blockerStore().flush()
   }
 
   // ------------------------------------------------------------------ plumbing
@@ -298,6 +329,29 @@ export class BrowserWindow {
     this.broadcastSnapshot()
   }
 
+  blockingDetails(): BlockingDetails {
+    const wc = this.tabs.activeWebContents()
+    if (!wc) {
+      return { site: null, blocking: false, reason: 'not-web', blocked: 0, owners: [] }
+    }
+    return blockerStore().detailsFor(wc.id)
+  }
+
+  /**
+   * Flip blocking for the site the active tab is on.
+   *
+   * The reload is not cosmetic. onBeforeRequest only sees requests as they are
+   * made, so turning blocking off leaves the page exactly as broken as it was,
+   * and turning it on leaves already-executed trackers running. Reloading also
+   * drives did-start-navigation, which zeroes the counter for free.
+   */
+  toggleBlockingForActiveTab(): void {
+    const wc = this.tabs.activeWebContents()
+    if (!wc) return
+    if (!blockerStore().toggleSite(wc.getURL())) return
+    wc.reload()
+  }
+
   find(query: string): void {
     const wc = this.tabs.activeWebContents()
     if (!wc || !query) return
@@ -325,6 +379,60 @@ export class BrowserWindow {
     wc.setZoomLevel(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next)))
   }
 
+  // ------------------------------------------------------------ gaming mode
+
+  isGamingMode(): boolean {
+    return this.gaming
+  }
+
+  toggleGamingMode(): void {
+    this.setGamingMode(!this.gaming)
+  }
+
+  /**
+   * Hand the whole window to the game: no tab strip, no toolbar, no panel,
+   * fullscreen, the display kept awake and background throttling off.
+   *
+   * The way out is deliberately findable without any browser UI on screen —
+   * the menu bar (View → Gaming Mode, or its shortcut) still works, and
+   * leaving fullscreen by any route drops the mode too.
+   */
+  setGamingMode(on: boolean): void {
+    if (on === this.gaming) return
+    this.gaming = on
+
+    if (on) {
+      this.gamingRestore = {
+        sidebarOpen: this.sidebar.isOpen(),
+        // Someone already in fullscreen should stay there on the way out.
+        wasFullScreen: this.window.isFullScreen()
+      }
+      this.sidebar.hide()
+      this.chromeView.setVisible(false)
+      this.tabs.setBackgroundThrottling(false)
+      this.keepAwake.start()
+      if (!this.gamingRestore.wasFullScreen) this.window.setFullScreen(true)
+      // Keyboard and gamepad input goes to the focused view, which may well be
+      // the chrome the mode just hid. Hand it to the game.
+      this.tabs.activeWebContents()?.focus()
+    } else {
+      const restore = this.gamingRestore
+      this.gamingRestore = null
+      this.chromeView.setVisible(true)
+      this.tabs.setBackgroundThrottling(true)
+      this.keepAwake.stop()
+      if (restore?.sidebarOpen) this.sidebar.show()
+      if (restore && !restore.wasFullScreen && this.window.isFullScreen()) {
+        this.window.setFullScreen(false)
+      }
+    }
+
+    this.layout()
+    this.broadcastSnapshot()
+    // Keeps the View menu's tick right when Esc, not the menu, ended the mode.
+    rebuildMenu()
+  }
+
   toggleSidebar(): void {
     this.sidebar.toggle()
     if (this.sidebar.isOpen()) this.sidebar.focus()
@@ -346,8 +454,13 @@ export class BrowserWindow {
     this.sidebar.select(url)
   }
 
-  unpinSidebarTool(url: string): void {
-    this.sidebar.unpin(url)
+  /** Right-click on a rail icon. Unpinning is deliberate, never a stray click. */
+  reorderSidebarTools(from: number, to: number): void {
+    this.sidebar.reorder(from, to)
+  }
+
+  showSidebarToolMenu(url: string): void {
+    this.sidebar.showToolMenu(url)
   }
 
   /** Rail "+" button: pin whatever the active tab is showing. */
@@ -371,14 +484,20 @@ export class BrowserWindow {
   /** Dev-only: let the pages settle, then capture each view and quit. */
   private scheduleSmokeCapture(dir: string): void {
     // Optionally exercise the overlay path so the capture proves it expands.
-    if (process.env['NEXUS_SMOKE_FIND']) {
+    if (process.env['LUMINA_SMOKE_FIND']) {
       setTimeout(() => this.toggleFind(), 3500)
     }
-    if (process.env['NEXUS_SMOKE_APPS']) {
+    if (process.env['LUMINA_SMOKE_APPS']) {
       setTimeout(() => this.focusQuickLinks(), 1500)
     }
-    if (process.env['NEXUS_SMOKE_SIDEBAR']) {
+    if (process.env['LUMINA_SMOKE_SIDEBAR']) {
       setTimeout(() => this.toggleSidebar(), 1500)
+    }
+    if (process.env['LUMINA_SMOKE_GAMES']) {
+      setTimeout(() => this.tabs.loadURL('lumina://home/games'), 1500)
+    }
+    if (process.env['LUMINA_SMOKE_GAMING']) {
+      setTimeout(() => this.setGamingMode(true), 1500)
     }
     setTimeout(() => {
       const views = [{ name: 'chrome', wc: this.chromeView.webContents }]
@@ -395,6 +514,9 @@ export class BrowserWindow {
   private dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    // Closing the window mid-game must not leave the display blocker running
+    // for the rest of the session.
+    this.keepAwake.stop()
     this.permissions.dispose()
     this.sidebar.dispose()
     this.tabs.dispose()

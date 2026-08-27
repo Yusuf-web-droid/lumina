@@ -1,4 +1,5 @@
 import { session } from 'electron'
+import { isCloudGaming } from '@shared/cloudGaming'
 import type { PermissionPrompt } from '@shared/types'
 import { PARTITION } from './tabs'
 
@@ -6,7 +7,19 @@ import { PARTITION } from './tabs'
 const AUTO_GRANT = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock'])
 
 /** Always refused; these have no UI here and are not worth the risk. */
-const AUTO_DENY = new Set(['openExternal', 'media-key-system'])
+const AUTO_DENY = new Set(['openExternal', 'mediaKeySystem'])
+
+/**
+ * Granted without asking on a cloud gaming page, and prompted for everywhere
+ * else.
+ *
+ * Keyboard lock is what lets Esc reach the game instead of dropping out of
+ * fullscreen, which is the difference between a pause menu and being thrown
+ * back to the desktop mid-match. It only takes effect in fullscreen, so a
+ * background page cannot use it to swallow keys, and the menu bar's shortcuts
+ * still work — ⇧⌘G remains a way out of gaming mode whatever the page grabs.
+ */
+const CLOUD_GAMING_GRANT = new Set(['keyboardLock'])
 
 type Decision = (granted: boolean) => void
 
@@ -27,7 +40,12 @@ export class Permissions {
       if (AUTO_GRANT.has(permission)) return callback(true)
       if (AUTO_DENY.has(permission)) return callback(false)
 
-      const origin = this.originOf(details?.requestingUrl || webContents?.getURL() || '')
+      const requestingURL = details?.requestingUrl || webContents?.getURL() || ''
+      if (CLOUD_GAMING_GRANT.has(permission) && isCloudGaming(requestingURL)) {
+        return callback(true)
+      }
+
+      const origin = this.originOf(requestingURL)
       const id = `perm-${this.nextId++}`
       this.pending.set(id, callback)
       this.prompt({ id, permission, origin })

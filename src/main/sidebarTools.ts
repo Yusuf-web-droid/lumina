@@ -1,3 +1,4 @@
+import { reorderList } from '@shared/tabOrder'
 import type { SidebarTool } from '@shared/types'
 import { hostLabel } from '@shared/urlUtils'
 import { JSONStore } from './store'
@@ -67,6 +68,20 @@ export class SidebarTools {
     items.push({ name: name.trim() || hostLabel(url), url })
     this.write(items)
     return true
+  }
+
+  /**
+   * Move a pinned tool to another slot in the rail. Shares the tab strip's
+   * index arithmetic, including its no-op and out-of-range handling.
+   *
+   * Reordering counts as customising, so a user who drags the shipped defaults
+   * around keeps that order instead of having it reset by a later default.
+   */
+  reorder(from: number, to: number): void {
+    const items = this.list()
+    const next = reorderList(items, from, to)
+    if (next === items) return
+    this.write(next)
   }
 
   remove(url: string): void {

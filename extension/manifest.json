@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Nexus Assistant",
+  "name": "Lumina Assistant",
   "version": "1.1.0",
   "description": "A Claude-powered AI chat assistant and quick-links launcher in a single popup.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Nexus Assistant"
+    "default_title": "Lumina Assistant"
   },
   "permissions": ["storage"],
   "host_permissions": ["https://api.anthropic.com/*"]

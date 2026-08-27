@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { NexusRailAPI, SidebarState } from '@shared/types'
+import type { LuminaRailAPI, SidebarState } from '@shared/types'
 import { IPC } from '@shared/types'
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
@@ -10,10 +10,11 @@ const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
  * chrome: it can switch, pin and close panel tools, and nothing else. Tabs,
  * history, downloads and navigation are deliberately absent.
  */
-const api: NexusRailAPI = {
+const api: LuminaRailAPI = {
   list: () => invoke<SidebarState>(IPC.SidebarToolsList),
   select: (url) => invoke<void>(IPC.SidebarToolsSelect, url),
-  unpin: (url) => invoke<void>(IPC.SidebarToolsUnpin, url),
+  menu: (url) => invoke<void>(IPC.SidebarToolsMenu, url),
+  reorder: (from, to) => invoke<void>(IPC.SidebarToolsReorder, from, to),
   pinCurrent: () => invoke<void>(IPC.SidebarToolsPinCurrent),
   reload: () => invoke<void>(IPC.SidebarReload),
   close: () => invoke<void>(IPC.SidebarClose),
@@ -22,4 +23,4 @@ const api: NexusRailAPI = {
   }
 }
 
-contextBridge.exposeInMainWorld('nexusRail', api)
+contextBridge.exposeInMainWorld('luminaRail', api)

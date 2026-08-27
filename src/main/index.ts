@@ -1,28 +1,32 @@
 import { app, protocol, session, shell } from 'electron'
-import { DEFAULT_SEARCH_TEMPLATE, isSafeNavigation } from '@shared/urlUtils'
+import { isSafeNavigation } from '@shared/urlUtils'
 import { registerIPC } from './ipc'
 import { buildMenu } from './menu'
 import { quickLinksStore } from './quickLinks'
 import { backgroundStore } from './background'
 import { faviconStore } from './favicons'
-import { isThemeSource, themeStore } from './theme'
+import { themeStore } from './theme'
 import { siteIcon } from './siteIcon'
 import { weatherStore } from './weather'
-import { widgetToken } from './widgets'
-import { renderBackgroundPage, renderStartPage } from './startPage'
+import { createStartPageRouter } from './startPageRoutes'
 import { applyClientHints, cleanUserAgent } from './userAgent'
 import { PARTITION } from './tabs'
+import { migrateProfile } from './migrateProfile'
 import { BrowserWindow } from './window'
 
-app.setName('Nexus')
+app.setName('Lumina')
+
+// Before anything reads userData: the app was called Nexus in earlier builds,
+// and userData is derived from the name, so the old profile has to move across.
+migrateProfile()
 
 // Must run before the app is ready, so the scheme behaves like a real origin
 // (proper security context) rather than an opaque one.
-// supportFetchAPI lets the start page fetch its own nexus://home/weather route.
+// supportFetchAPI lets the start page fetch its own lumina://home/weather route.
 // corsEnabled stays off, so only same-origin pages — that is, the start page
 // itself — can read from the scheme.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'nexus', privileges: { standard: true, secure: true, supportFetchAPI: true } }
+  { scheme: 'lumina', privileges: { standard: true, secure: true, supportFetchAPI: true } }
 ])
 
 app.userAgentFallback = cleanUserAgent()
@@ -43,6 +47,10 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.window.isMinimized()) mainWindow.window.restore()
+      // focus() raises the window within this app but does not bring the app
+      // itself forward, so launching Lumina while it is already running behind
+      // another app looked like nothing happening at all.
+      app.focus({ steal: true })
       mainWindow.window.focus()
     }
   })
@@ -51,107 +59,21 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(() => {
       // The start page is generated per request, so edits to quick links show up
-    // on the next new tab without any cache busting.
-    const html = (body: string): Response =>
-      new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      // on the next new tab without any cache busting. The router itself lives in
+      // ./startPageRoutes, which is where its token and CSP handling is explained.
+      const serveStartPage = createStartPageRouter({
+        background: backgroundStore(),
+        favicons: faviconStore(),
+        quickLinks: quickLinksStore(),
+        weather: weatherStore(),
+        theme: themeStore(),
+        // Opening a game from the games page hands the window to it.
+        gaming: { on: () => mainWindow?.setGamingMode(true) },
+        siteIcon
+      })
 
-    const backToHome = (): Response =>
-      new Response(null, { status: 302, headers: { location: 'nexus://home/' } })
-
-    const backgroundOptions = () => {
-      const bg = backgroundStore().get()
-      return {
-        kind: bg.kind,
-        hasImage: backgroundStore().imagePath() !== null,
-        preset: bg.preset,
-        dim: bg.dim
-      }
-    }
-
-    const serveStartPage = async (request: Request): Promise<Response> => {
-      const { hostname, pathname } = new URL(request.url)
-
-      // nexus://bg/current — the background in use.
-      // nexus://bg/preset/<id> — one bundled photo, for the picker's thumbnails.
-      if (hostname === 'bg') {
-        const preset = /^\/preset\/([a-z0-9-]+)$/.exec(pathname)
-        return backgroundStore().imageResponse(
-          preset ? backgroundStore().presetPath(preset[1]!) : undefined
-        )
-      }
-      if (hostname === 'icon') return faviconStore().response(pathname.replace(/^\/+/, ''))
-      if (hostname !== 'home') return new Response('Not found', { status: 404 })
-
-      const path = pathname.replace(/\/+$/, '')
-
-      if (path === '' || path === '/') {
-        const links = quickLinksStore().list()
-        // Pick up icons for anything new or stale; they show on the next open.
-        void faviconStore().refresh(links.map((l) => l.url))
-        return html(renderStartPage(links, DEFAULT_SEARCH_TEMPLATE, backgroundOptions(), (url) => siteIcon(url)))
-      }
-
-      // Only the start page this run generated may reach the weather routes.
-      if (path === '/weather' || path === '/weather/place') {
-        if (request.headers.get('x-nexus-widget') !== widgetToken()) {
-          return new Response('Forbidden', { status: 403 })
-        }
-        const payload =
-          path === '/weather/place'
-            ? await weatherStore().setPlace(await request.text())
-            : await weatherStore().current()
-
-        return new Response(JSON.stringify(payload), {
-          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }
-        })
-      }
-
-      if (path === '/background') {
-        return html(renderBackgroundPage(backgroundOptions(), themeStore().get()))
-      }
-
-      const themeMatch = /^\/appearance\/([a-z]+)$/.exec(path)
-      if (themeMatch) {
-        const source = themeMatch[1]!
-        if (isThemeSource(source)) themeStore().set(source)
-        // Back to the picker, so the newly active option is visible.
-        return new Response(null, {
-          status: 302,
-          headers: { location: 'nexus://home/background' }
-        })
-      }
-
-      if (path === '/background/choose') {
-        // Opens the system file picker; cancelling just returns unchanged.
-        await backgroundStore().chooseImage()
-        return backToHome()
-      }
-
-      const presetMatch = /^\/background\/preset\/([a-z0-9-]+)$/.exec(path)
-      if (presetMatch) {
-        backgroundStore().setPreset(presetMatch[1]!)
-        return new Response(null, {
-          status: 302,
-          headers: { location: 'nexus://home/background' }
-        })
-      }
-
-      if (path === '/background/scene' || path === '/background/plain') {
-        backgroundStore().setKind(path.endsWith('scene') ? 'scene' : 'plain')
-        return backToHome()
-      }
-
-      const dimMatch = /^\/background\/dim\/(\d{1,3})$/.exec(path)
-      if (dimMatch) {
-        backgroundStore().setDim(Number(dimMatch[1]))
-        return new Response(null, { status: 302, headers: { location: 'nexus://home/background' } })
-      }
-
-      return new Response('Not found', { status: 404 })
-    }
-
-    const tabSession = session.fromPartition(PARTITION)
-    tabSession.protocol.handle('nexus', serveStartPage)
+      const tabSession = session.fromPartition(PARTITION)
+      tabSession.protocol.handle('lumina', serveStartPage)
 
     // Client hints must match the spoofed UA or Google refuses to sign in.
     const ua = app.userAgentFallback
@@ -170,7 +92,13 @@ if (!app.requestSingleInstanceLock()) {
       createWindow()
 
       app.on('activate', () => {
+        // Clicking the Dock icon with a window already open must raise it,
+        // not quietly do nothing.
         if (!mainWindow) createWindow()
+        else {
+          if (mainWindow.window.isMinimized()) mainWindow.window.restore()
+          mainWindow.window.show()
+        }
       })
     })
     .catch((err) => {

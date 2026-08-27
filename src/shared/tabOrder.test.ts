@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { indexForShortcut, neighbourAfterClose, reorderList, wrapIndex } from './tabOrder'
+import {
+  destinationAfterDrop,
+  indexForShortcut,
+  neighbourAfterClose,
+  reorderList,
+  wrapIndex
+} from './tabOrder'
 
 describe('neighbourAfterClose', () => {
   it('activates the tab that slid into the vacated slot', () => {
@@ -95,5 +101,38 @@ describe('indexForShortcut', () => {
 
   it('returns -1 with no tabs', () => {
     expect(indexForShortcut(0, 0)).toBe(-1)
+  })
+})
+
+describe('destinationAfterDrop', () => {
+  it('lands an item dragged downward in the gap it was aimed at', () => {
+    // ['a','b','c'], dragging 'a' into the gap below 'c' (gap 3).
+    expect(reorderList(['a', 'b', 'c'], 0, destinationAfterDrop(0, 3))).toEqual(['b', 'c', 'a'])
+  })
+
+  it('lands an item dragged upward in the gap it was aimed at', () => {
+    // ['a','b','c'], dragging 'c' into the gap above 'a' (gap 0).
+    expect(reorderList(['a', 'b', 'c'], 2, destinationAfterDrop(2, 0))).toEqual(['c', 'a', 'b'])
+  })
+
+  it('drops into the middle of the list', () => {
+    expect(reorderList(['a', 'b', 'c', 'd'], 3, destinationAfterDrop(3, 1))).toEqual([
+      'a',
+      'd',
+      'b',
+      'c'
+    ])
+    expect(reorderList(['a', 'b', 'c', 'd'], 0, destinationAfterDrop(0, 2))).toEqual([
+      'b',
+      'a',
+      'c',
+      'd'
+    ])
+  })
+
+  it('treats both gaps touching the dragged item as no-ops', () => {
+    // Dropping just above or just below where it already sits must not move it.
+    expect(destinationAfterDrop(1, 1)).toBe(1)
+    expect(destinationAfterDrop(1, 2)).toBe(1)
   })
 })

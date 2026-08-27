@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hostLabel, isSafeNavigation, normalizeInput, prettyURL } from './urlUtils'
+import { hostLabel, isSafeNavigation, mayNavigateTo, normalizeInput, prettyURL } from './urlUtils'
 
 describe('normalizeInput', () => {
   const cases: Array<[input: string, expected: string]> = [
@@ -102,5 +102,44 @@ describe('hostLabel', () => {
 
   it('falls back for unparseable input', () => {
     expect(hostLabel('nonsense')).toBe('New Tab')
+  })
+})
+
+describe('mayNavigateTo', () => {
+  const EXPLOIT = 'lumina://home/background/choose'
+
+  it('refuses a web page reaching the privileged scheme', () => {
+    expect(mayNavigateTo(EXPLOIT, 'https://example.com')).toBe(false)
+    expect(mayNavigateTo('lumina://home/appearance/dark', 'https://example.com')).toBe(false)
+    expect(mayNavigateTo('lumina://home', 'http://localhost:3000')).toBe(false)
+  })
+
+  it('lets the start page drive its own settings links', () => {
+    expect(mayNavigateTo('lumina://home/background', 'lumina://home')).toBe(true)
+    expect(mayNavigateTo(EXPLOIT, 'lumina://home/background')).toBe(true)
+  })
+
+  it('refuses the privileged scheme from an unparseable or blank initiator', () => {
+    expect(mayNavigateTo('lumina://home', 'about:blank')).toBe(false)
+    expect(mayNavigateTo('lumina://home', '')).toBe(false)
+    expect(mayNavigateTo('lumina://home', 'not a url')).toBe(false)
+  })
+
+  it('leaves every other scheme exactly as isSafeNavigation decides', () => {
+    for (const from of ['https://example.com', 'lumina://home', 'about:blank', '']) {
+      for (const target of [
+        'https://x.dev',
+        'http://x.dev',
+        'about:blank',
+        'javascript:alert(1)',
+        'file:///etc/passwd',
+        'data:text/html,hi',
+        'not a url'
+      ]) {
+        expect(mayNavigateTo(target, from), `${target} from ${from}`).toBe(
+          isSafeNavigation(target)
+        )
+      }
+    }
   })
 })

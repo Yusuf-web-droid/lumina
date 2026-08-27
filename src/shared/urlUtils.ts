@@ -9,7 +9,7 @@ const SCHEME_RE = /^([a-z][a-z0-9+.-]*):/i
 
 /** Schemes we will hand to the tab as-is. */
 const NAVIGABLE_SCHEMES = new Set([
-  'nexus:',
+  'lumina:',
   'http:',
   'https:',
   'file:',
@@ -20,7 +20,7 @@ const NAVIGABLE_SCHEMES = new Set([
 ])
 
 /** Schemes a page is allowed to navigate itself to. Deliberately narrower. */
-const SAFE_NAVIGATION_SCHEMES = new Set(['http:', 'https:', 'about:', 'blob:', 'nexus:'])
+const SAFE_NAVIGATION_SCHEMES = new Set(['http:', 'https:', 'about:', 'blob:', 'lumina:'])
 
 /**
  * Real schemes this browser will not open. Needed because the scheme regex also
@@ -103,9 +103,42 @@ export function isSafeNavigation(url: string): boolean {
   }
 }
 
+/**
+ * True if a page currently at `from` may navigate itself to `target`.
+ *
+ * Stricter than `isSafeNavigation` for one scheme. `lumina:` is registered as
+ * privileged and its routes reach real app state — the appearance and wallpaper
+ * settings, and a native file dialog. Allowing any page to navigate there means
+ * example.com can set `location = 'lumina://home/background/choose'` and open
+ * that dialog, so the scheme is restricted to pages already on it.
+ *
+ * It cannot simply be dropped from the allow-list: the start page drives its own
+ * settings through ordinary `<a href="lumina://...">` links, which are
+ * page-initiated navigations too. The initiator is what separates the two cases.
+ */
+export function mayNavigateTo(target: string, from: string): boolean {
+  if (!isSafeNavigation(target)) return false
+
+  let targetScheme: string
+  try {
+    targetScheme = new URL(target).protocol
+  } catch {
+    return false
+  }
+  if (targetScheme !== 'lumina:') return true
+
+  try {
+    return new URL(from).protocol === 'lumina:'
+  } catch {
+    // No parseable initiator — a fresh tab, or about:blank. Chrome-initiated
+    // loads do not come through here, so treat this as untrusted.
+    return false
+  }
+}
+
 /** Shortened form for the address bar: drops the scheme and a leading "www.". */
 export function prettyURL(url: string): string {
-  if (!url || url === 'about:blank' || url.startsWith('nexus:')) return ''
+  if (!url || url === 'about:blank' || url.startsWith('lumina:')) return ''
   try {
     const u = new URL(url)
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return url
@@ -119,7 +152,7 @@ export function prettyURL(url: string): string {
 
 /** Human-readable fallback title for a tab that has not reported one yet. */
 export function hostLabel(url: string): string {
-  if (url.startsWith('nexus:')) return 'New Tab'
+  if (url.startsWith('lumina:')) return 'New Tab'
   try {
     return new URL(url).host.replace(/^www\./, '') || 'New Tab'
   } catch {

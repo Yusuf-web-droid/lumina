@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
+  BlockingDetails,
   Bookmark,
   QuickLink,
   QuickLinkIcon,
@@ -7,7 +8,7 @@ import type {
   DownloadEntry,
   FindResult,
   HistoryEntry,
-  NexusAPI,
+  LuminaAPI,
   PermissionPrompt,
   Suggestion
 } from '@shared/types'
@@ -24,7 +25,7 @@ const on = <T>(channel: string, cb: (payload: T) => void): void => {
  * The entire surface the chrome UI can reach. Note there is no generic
  * "send(channel, ...)" escape hatch — every capability is named explicitly.
  */
-const api: NexusAPI = {
+const api: LuminaAPI = {
   tabs: {
     create: (url) => invoke<void>(IPC.TabsCreate, url),
     close: (id) => invoke<void>(IPC.TabsClose, id),
@@ -55,6 +56,10 @@ const api: NexusAPI = {
     add: () => invoke<void>(IPC.BookmarksAdd),
     remove: (url) => invoke<void>(IPC.BookmarksRemove, url),
     has: (url) => invoke<boolean>(IPC.BookmarksHas, url)
+  },
+  blocking: {
+    details: () => invoke<BlockingDetails>(IPC.BlockingDetails),
+    toggleSite: () => invoke<void>(IPC.BlockingToggleSite)
   },
   downloads: {
     list: () => invoke<DownloadEntry[]>(IPC.DownloadsList),
@@ -90,4 +95,4 @@ const api: NexusAPI = {
   onToggleQuickLinks: (cb) => on<null>(IPC.OnToggleQuickLinks, () => cb())
 }
 
-contextBridge.exposeInMainWorld('nexus', api)
+contextBridge.exposeInMainWorld('lumina', api)

@@ -3,7 +3,7 @@ import type {
   QuickLink,
   QuickLinkIcon,
   DownloadEntry,
-  NexusAPI,
+  LuminaAPI,
   PermissionPrompt,
   Suggestion,
   TabState
@@ -12,11 +12,11 @@ import { prettyURL } from '@shared/urlUtils'
 
 declare global {
   interface Window {
-    nexus: NexusAPI
+    lumina: LuminaAPI
   }
 }
 
-const api = window.nexus
+const api = window.lumina
 const BASE_CHROME_HEIGHT = 84
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -44,6 +44,13 @@ const els = {
   findPrev: $<HTMLButtonElement>('find-prev'),
   findNext: $<HTMLButtonElement>('find-next'),
   findClose: $<HTMLButtonElement>('find-close'),
+  shieldBtn: $<HTMLButtonElement>('shield-btn'),
+  shieldCount: $<HTMLSpanElement>('shield-count'),
+  shieldPanel: $<HTMLDivElement>('shield-panel'),
+  shieldTitle: $<HTMLSpanElement>('shield-title'),
+  shieldList: $<HTMLUListElement>('shield-list'),
+  shieldEmpty: $<HTMLParagraphElement>('shield-empty'),
+  shieldToggle: $<HTMLButtonElement>('shield-toggle'),
   appsBtn: $<HTMLButtonElement>('apps-btn'),
   appsPanel: $<HTMLDivElement>('apps-panel'),
   appsGrid: $<HTMLDivElement>('apps-grid'),
@@ -84,7 +91,14 @@ const activeTab = (): TabState | null =>
 let lastReportedHeight = -1
 function syncHeight(): void {
   let needed = BASE_CHROME_HEIGHT
-  const overlays = [els.suggestions, els.findbar, els.appsPanel, els.downloadsPanel, els.permission]
+  const overlays = [
+    els.suggestions,
+    els.findbar,
+    els.appsPanel,
+    els.shieldPanel,
+    els.downloadsPanel,
+    els.permission
+  ]
   for (const el of overlays) {
     if (el.hidden) continue
     needed = Math.max(needed, BASE_CHROME_HEIGHT + el.offsetTop + el.offsetHeight + 10)
@@ -192,11 +206,103 @@ async function renderToolbar(): Promise<void> {
     els.schemeBadge.classList.remove('insecure')
   }
 
+  renderShield()
+
   els.assistantBtn.classList.toggle('on', snapshot.sidebarOpen)
 
   const saved = url ? await api.bookmarks.has(url) : false
   els.star.classList.toggle('saved', saved)
 }
+
+/**
+ * The shield, painted straight from the snapshot.
+ *
+ * Synchronous and cheap on purpose: a blocked request repaints the toolbar, so
+ * anything expensive here would run dozens of times while a page loads. The
+ * owner breakdown is fetched only when the popover opens.
+ */
+function renderShield(): void {
+  const tab = activeTab()
+  const url = tab?.url ?? ''
+  const onWeb = url.startsWith('http://') || url.startsWith('https://')
+
+  els.shieldBtn.hidden = !onWeb
+  if (!onWeb) {
+    els.shieldCount.hidden = true
+    return
+  }
+
+  const blocking = tab?.blocking ?? false
+  const blocked = tab?.blocked ?? 0
+
+  els.shieldBtn.classList.toggle('on', blocking && blocked > 0)
+  els.shieldBtn.classList.toggle('off', !blocking)
+  els.shieldBtn.title = blocking
+    ? `${blocked} blocked on this page`
+    : 'Blocking is off for this site'
+
+  els.shieldCount.hidden = !blocking || blocked === 0
+  els.shieldCount.textContent = blocked > 99 ? '99+' : String(blocked)
+}
+
+function closeShieldPanel(): void {
+  els.shieldPanel.hidden = true
+  els.shieldBtn.classList.remove('active')
+  els.shieldBtn.setAttribute('aria-expanded', 'false')
+  scheduleSync()
+}
+
+async function openShieldPanel(): Promise<void> {
+  const details = await api.blocking.details()
+
+  els.shieldTitle.textContent = details.site ?? 'This page'
+  els.shieldList.replaceChildren(
+    ...details.owners.slice(0, 6).map(({ name, count }) => {
+      const li = document.createElement('li')
+      const who = document.createElement('span')
+      who.className = 'shield-owner'
+      who.textContent = name
+      const n = document.createElement('span')
+      n.className = 'shield-n'
+      n.textContent = String(count)
+      li.append(who, n)
+      return li
+    })
+  )
+
+  els.shieldEmpty.hidden = details.owners.length > 0
+  els.shieldEmpty.textContent =
+    details.reason === 'disabled'
+      ? 'Blocking is switched off everywhere — see View → Block Ads and Trackers.'
+      : details.reason === 'cloud-gaming'
+        ? 'Blocking stands down on cloud gaming sites, so a stream is never cut off.'
+        : details.reason === 'site-allowed'
+          ? 'Blocking is off for this site.'
+          : 'Nothing blocked on this page.'
+
+  els.shieldToggle.textContent = details.blocking
+    ? 'Turn off for this site'
+    : 'Turn on for this site'
+  els.shieldToggle.hidden =
+    details.reason === 'disabled' ||
+    details.reason === 'cloud-gaming' ||
+    details.site === null
+
+  els.shieldPanel.hidden = false
+  els.shieldBtn.classList.add('active')
+  els.shieldBtn.setAttribute('aria-expanded', 'true')
+  scheduleSync()
+}
+
+els.shieldBtn.addEventListener('click', () => {
+  if (els.shieldPanel.hidden) void openShieldPanel()
+  else closeShieldPanel()
+})
+
+els.shieldToggle.addEventListener('click', () => {
+  closeShieldPanel()
+  void api.blocking.toggleSite()
+})
 
 // ------------------------------------------------------------------- suggestions
 
@@ -546,6 +652,10 @@ els.downloadsClear.addEventListener('click', () => void api.downloads.clear())
 
 // Clicking outside the downloads panel dismisses it.
 document.addEventListener('mousedown', (e) => {
+  if (!els.shieldPanel.hidden) {
+    const t = e.target as Node
+    if (!els.shieldPanel.contains(t) && !els.shieldBtn.contains(t)) closeShieldPanel()
+  }
   if (!els.appsPanel.hidden) {
     const t = e.target as Node
     if (!els.appsPanel.contains(t) && !els.appsBtn.contains(t)) closeAppsPanel()

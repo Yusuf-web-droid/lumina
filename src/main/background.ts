@@ -90,7 +90,7 @@ export class Background {
     return true
   }
 
-  /** A photo as an HTTP response, for the nexus://bg routes. */
+  /** A photo as an HTTP response, for the lumina://bg routes. */
   imageResponse(path: string | null = this.imagePath()): Response {
     if (!path) return new Response('No background set', { status: 404 })
     try {

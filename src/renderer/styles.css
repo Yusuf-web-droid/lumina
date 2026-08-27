@@ -682,3 +682,88 @@ svg {
 [hidden] {
   display: none !important;
 }
+
+
+/* ------------------------------------------------------------------ shield */
+
+/* The count sits on the icon like the downloads dot, widened into a pill so a
+   two- or three-digit number still fits. */
+#shield-count {
+  position: absolute;
+  bottom: 1px;
+  right: 0;
+  min-width: 13px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#shield-btn.on { color: var(--accent); }
+#shield-btn.off { color: var(--text-dim); opacity: 0.55; }
+
+#shield-panel {
+  position: absolute;
+  top: 6px;
+  right: 116px;
+  width: 250px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 22%);
+}
+
+#shield-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#shield-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+#shield-list:empty { display: none; }
+
+#shield-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+#shield-list .shield-owner {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#shield-list .shield-n {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+#shield-empty {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+#shield-empty[hidden] { display: none; }
+
+#shield-toggle { width: 100%; text-align: left; }

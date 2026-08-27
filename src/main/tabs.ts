@@ -2,10 +2,10 @@ import { WebContentsView, type BaseWindow, type Rectangle, type WebContents } fr
 import { join } from 'node:path'
 import type { BrowserSnapshot, TabState } from '@shared/types'
 import { indexForShortcut, neighbourAfterClose, reorderList, wrapIndex } from '@shared/tabOrder'
-import { hostLabel, isSafeNavigation, normalizeInput } from '@shared/urlUtils'
+import { hostLabel, mayNavigateTo, normalizeInput } from '@shared/urlUtils'
 
 /** Shared session for every tab, so cookies and logins persist across them. */
-export const PARTITION = 'persist:nexus'
+export const PARTITION = 'persist:lumina'
 
 const MAX_CLOSED_STACK = 25
 
@@ -27,6 +27,8 @@ export interface TabManagerHooks {
   contentBounds(): Rectangle
   /** Hook for per-tab extras (context menus, zoom defaults) on a fresh WebContents. */
   onTabCreated(wc: WebContents): void
+  /** Ad-blocking state for a tab's WebContents, owned by the blocker. */
+  blockState(webContentsId: number): { blocked: number; blocking: boolean }
   homeURL: string
 }
 
@@ -41,6 +43,8 @@ export class TabManager {
   private activeId: number | null = null
   private nextId = 1
   private closedStack: string[] = []
+  /** Cleared by gaming mode; remembered so new tabs inherit the setting. */
+  private backgroundThrottling = true
 
   constructor(
     private readonly window: BaseWindow,
@@ -70,6 +74,8 @@ export class TabManager {
     })
     view.setBackgroundColor('#ffffff')
 
+    if (!this.backgroundThrottling) view.webContents.setBackgroundThrottling(false)
+
     const tab: Tab = { id: this.nextId++, view, favicon: null, crashed: false }
     this.tabs.push(tab)
     this.wire(tab)
@@ -82,6 +88,22 @@ export class TabManager {
     else this.hooks.onChange()
 
     return tab.id
+  }
+
+  /**
+   * Chromium throttles timers and animations in a page that is not visible,
+   * and reports it as hidden through the Page Visibility API — which a game
+   * takes as a cue to pause itself. Gaming mode turns that off so alt-tabbing
+   * to Discord does not stall what is running.
+   */
+  setBackgroundThrottling(allowed: boolean): void {
+    if (allowed === this.backgroundThrottling) return
+    this.backgroundThrottling = allowed
+    for (const tab of this.tabs) {
+      if (!tab.view.webContents.isDestroyed()) {
+        tab.view.webContents.setBackgroundThrottling(allowed)
+      }
+    }
   }
 
   close(id: number): void {
@@ -201,7 +223,9 @@ export class TabManager {
         loading: false,
         canGoBack: false,
         canGoForward: false,
-        crashed: true
+        crashed: true,
+        blocked: 0,
+        blocking: false
       }
     }
     const url = wc.getURL()
@@ -213,7 +237,8 @@ export class TabManager {
       loading: wc.isLoading(),
       canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(),
-      crashed: tab.crashed
+      crashed: tab.crashed,
+      ...this.hooks.blockState(wc.id)
     }
   }
 
@@ -306,15 +331,18 @@ export class TabManager {
 
     // A page must never open a window we did not configure. Route it to a tab.
     wc.setWindowOpenHandler(({ url, disposition }) => {
-      if (isSafeNavigation(url)) {
+      if (mayNavigateTo(url, wc.getURL())) {
         this.create(url, { activate: disposition !== 'background-tab' })
       }
       return { action: 'deny' }
     })
 
-    // Block page-initiated navigation to schemes we do not want to handle.
+    // Block page-initiated navigation to schemes we do not want to handle, and
+    // to the privileged lumina: scheme from anywhere but lumina: itself — see
+    // mayNavigateTo. The initiator is the page doing the navigating, which is
+    // still the current URL at the point this fires.
     wc.on('will-navigate', (event, url) => {
-      if (!isSafeNavigation(url)) {
+      if (!mayNavigateTo(url, wc.getURL())) {
         event.preventDefault()
         console.warn(`[tabs] blocked navigation to ${url}`)
       }

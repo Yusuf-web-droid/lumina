@@ -31,13 +31,13 @@ export function glyphColor(hex: string): string {
  * letter tile.
  *
  * `inline` picks how the favicon is addressed — the start page is served the
- * nexus:// scheme and can link to it, while the app chrome is not and needs
+ * lumina:// scheme and can link to it, while the app chrome is not and needs
  * the bytes themselves.
  */
 export function siteIcon(url: string, inline = false): QuickLinkIcon | null {
   const host = hostOf(url)
   if (host && faviconStore().path(url)) {
-    const src = inline ? faviconStore().dataUrl(url) : `nexus://icon/${host}`
+    const src = inline ? faviconStore().dataUrl(url) : `lumina://icon/${host}`
     if (src) return { kind: 'image', src }
   }
 

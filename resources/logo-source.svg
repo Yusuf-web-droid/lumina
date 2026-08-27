@@ -1,17 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    The Lumina mark: light caught around the rim of a sphere, with a bead of it
+    breaking away at the top right.
+
+    The band lies between an outer circle — centre (496, 528), radius 250 — and
+    an inner one of radius 170 pushed 45 towards the top right, so it runs 125
+    wide at the bottom left and tapers to 45 at the ends. That taper is the
+    point: an even-width ring with a gap reads as a loading spinner, and a band
+    tapering to points reads as a crescent moon. Tapering to blunt, rounded
+    ends reads as neither — it reads as light falling off a rim.
+
+    The band is cut at -10° and -80°, opening a 70° mouth for the bead. Ring
+    and bead together are exactly 500x500 about the same centre, so the square
+    the icon script crops to needs no fudging.
+  -->
   <rect width="1024" height="1024" fill="#ffffff"/>
   <defs>
-    <linearGradient id="g" x1="300" y1="260" x2="724" y2="764" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#35EDE4"/>
-      <stop offset="1" stop-color="#0B7C90"/>
+    <!-- Brightest at the bead, deepening away from it: the light has a source. -->
+    <linearGradient id="lum" x1="700" y1="330" x2="300" y2="740" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE3A3"/>
+      <stop offset="0.42" stop-color="#FF9F4D"/>
+      <stop offset="1" stop-color="#EE4E86"/>
     </linearGradient>
   </defs>
-  <g stroke="url(#g)" fill="url(#g)">
-    <path d="M330 736 L330 288 L694 736 L694 288"
-          fill="none" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="330" cy="288" r="58"/>
-    <circle cx="330" cy="736" r="58"/>
-    <circle cx="694" cy="288" r="58"/>
-    <circle cx="694" cy="736" r="58"/>
-  </g>
+  <path d="M 742.20 484.60
+           A 250 250 0 1 1 539.40 281.80
+           A 22.55 22.55 0 0 1 531.57 326.22
+           A 170 170 0 1 0 697.78 492.43
+           A 22.55 22.55 0 0 1 742.20 484.60 Z"
+        fill="url(#lum)"/>
+  <circle cx="672.78" cy="351.22" r="72" fill="url(#lum)"/>
 </svg>

@@ -12,6 +12,10 @@ export interface TabState {
   canGoBack: boolean
   canGoForward: boolean
   crashed: boolean
+  /** Requests the ad blocker cancelled since this page committed. */
+  blocked: number
+  /** Whether blocking is in effect for this tab right now. */
+  blocking: boolean
 }
 
 /**
@@ -97,6 +101,17 @@ export interface PermissionPrompt {
   origin: string
 }
 
+/** What the shield popover shows for the active tab. */
+export interface BlockingDetails {
+  /** Registrable domain the per-site toggle applies to, or null off the web. */
+  site: string | null
+  blocking: boolean
+  reason: 'on' | 'site-allowed' | 'disabled' | 'not-web' | 'cloud-gaming'
+  blocked: number
+  /** Most-blocked owners on this page first. */
+  owners: Array<{ name: string; count: number }>
+}
+
 /** A suggestion row under the address bar. */
 export interface Suggestion {
   kind: 'history' | 'bookmark' | 'search'
@@ -151,12 +166,16 @@ export const IPC = {
   SidebarToolsList: 'sidebar:tools-list',
   SidebarToolsSelect: 'sidebar:tools-select',
   SidebarToolsPinCurrent: 'sidebar:tools-pin-current',
-  SidebarToolsUnpin: 'sidebar:tools-unpin',
+  SidebarToolsMenu: 'sidebar:tools-menu',
+  SidebarToolsReorder: 'sidebar:tools-reorder',
   SidebarClose: 'sidebar:close',
 
   ZoomIn: 'zoom:in',
   ZoomOut: 'zoom:out',
   ZoomReset: 'zoom:reset',
+
+  BlockingDetails: 'blocking:details',
+  BlockingToggleSite: 'blocking:toggle-site',
 
   PermissionRespond: 'permission:respond',
   ChromeHeightChanged: 'chrome:height-changed',
@@ -174,8 +193,8 @@ export const IPC = {
   OnSidebarTools: 'on:sidebar-tools'
 } as const
 
-/** The surface `contextBridge` exposes to the chrome UI as `window.nexus`. */
-export interface NexusAPI {
+/** The surface `contextBridge` exposes to the chrome UI as `window.lumina`. */
+export interface LuminaAPI {
   tabs: {
     create(url?: string): Promise<void>
     close(id: number): Promise<void>
@@ -206,6 +225,11 @@ export interface NexusAPI {
     add(): Promise<void>
     remove(url: string): Promise<void>
     has(url: string): Promise<boolean>
+  }
+  blocking: {
+    details(): Promise<BlockingDetails>
+    /** Flip blocking for whatever site the active tab is on, and reload it. */
+    toggleSite(): Promise<void>
   }
   downloads: {
     list(): Promise<DownloadEntry[]>
@@ -244,13 +268,16 @@ export interface NexusAPI {
 
 /**
  * The much smaller surface exposed to the side panel's icon rail as
- * `window.nexusRail`. Kept separate from NexusAPI so the rail — a second
+ * `window.luminaRail`. Kept separate from LuminaAPI so the rail — a second
  * renderer — cannot reach tab, history or download control.
  */
-export interface NexusRailAPI {
+export interface LuminaRailAPI {
   list(): Promise<SidebarState>
   select(url: string): Promise<void>
-  unpin(url: string): Promise<void>
+  /** Open the native right-click menu for one pinned tool. */
+  menu(url: string): Promise<void>
+  /** Drag-reorder: move the tool at `from` into position `to`. */
+  reorder(from: number, to: number): Promise<void>
   pinCurrent(): Promise<void>
   reload(): Promise<void>
   close(): Promise<void>

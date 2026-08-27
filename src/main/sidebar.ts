@@ -1,8 +1,8 @@
-import { WebContentsView, type BaseWindow, type Rectangle } from 'electron'
+import { Menu, WebContentsView, type BaseWindow, type Rectangle } from 'electron'
 import { join } from 'node:path'
 import type { PinBlocked, SidebarState, SidebarToolView } from '@shared/types'
 import { IPC } from '@shared/types'
-import { isSafeNavigation } from '@shared/urlUtils'
+import { isSafeNavigation, mayNavigateTo } from '@shared/urlUtils'
 import { faviconStore } from './favicons'
 import { MAX_TOOLS, SidebarTools } from './sidebarTools'
 import { siteIcon } from './siteIcon'
@@ -119,6 +119,33 @@ export class Sidebar {
     if (!isSafeNavigation(url)) return
     if (this.tools.add(url, title)) this.warmIcons([url])
     this.select(url)
+    this.broadcast()
+  }
+
+  /**
+   * The rail's right-click menu for one tool. Unpinning used to be a badge on
+   * the icon itself, which cost people tools they meant to click.
+   */
+  showToolMenu(url: string): void {
+    const tool = this.tools.list().find((t) => t.url === url)
+    if (!tool || !this.railView) return
+
+    Menu.buildFromTemplate([
+      { label: tool.name, enabled: false },
+      { type: 'separator' },
+      { label: 'Reload', click: () => this.views.get(url)?.webContents.reload() },
+      { label: 'Open in a Tab', click: () => this.openInTab?.(url) },
+      { type: 'separator' },
+      { label: `Unpin ${tool.name}`, click: () => this.unpin(url) }
+    ]).popup({ window: this.window })
+  }
+
+  /**
+   * Drag-reorder from the rail. Only the stored order changes: the active tool
+   * and its live view are untouched, so dragging never reloads a conversation.
+   */
+  reorder(from: number, to: number): void {
+    this.tools.reorder(from, to)
     this.broadcast()
   }
 
@@ -296,17 +323,34 @@ export class Sidebar {
 
     // Links from a tool belong in a real tab, not inside the narrow panel.
     wc.setWindowOpenHandler(({ url: target }) => {
-      if (isSafeNavigation(target)) this.openInTab?.(target)
+      if (mayNavigateTo(target, wc.getURL())) this.openInTab?.(target)
       return { action: 'deny' }
+    })
+
+    // Tools are web pages on the same footing as tabs, so they get the same
+    // navigation filter tabs do. Without this a tool page could reach the
+    // privileged lumina: scheme even once the tab path refuses to.
+    wc.on('will-navigate', (event, target) => {
+      if (!mayNavigateTo(target, wc.getURL())) {
+        event.preventDefault()
+        console.warn(`[sidebar] blocked navigation to ${target}`)
+      }
     })
 
     // A tool that reaches its real favicon gets a sharper rail icon than the
     // bundled glyph fallback, so repaint once one lands.
     wc.on('page-favicon-updated', () => this.warmIcons([url]))
 
-    void wc.loadURL(url).catch((err) => {
-      console.error(`[sidebar] failed to load ${url}:`, err)
-    })
+    // `pin()` validates before storing, but the store is a file on disk that a
+    // future version — or a hand edit — could put anything into. Re-check here,
+    // the way restored tabs should, rather than trusting it verbatim.
+    if (!isSafeNavigation(url)) {
+      console.warn(`[sidebar] refusing to load stored tool URL ${url}`)
+    } else {
+      void wc.loadURL(url).catch((err) => {
+        console.error(`[sidebar] failed to load ${url}:`, err)
+      })
+    }
 
     this.views.set(url, view)
     return view
