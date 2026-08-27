@@ -17,6 +17,9 @@ declare global {
 }
 
 const api = window.lumina
+
+// Lets the stylesheet inset for whichever corner holds the window controls.
+document.documentElement.dataset.platform = api.platform
 const BASE_CHROME_HEIGHT = 84
 
 const $ = <T extends HTMLElement>(id: string): T => {

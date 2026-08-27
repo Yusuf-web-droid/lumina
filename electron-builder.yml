@@ -32,6 +32,31 @@ mac:
   identity: null
   minimumSystemVersion: "12.0"
 
+# Windows and Linux carry no signing identity either, so both warn on first
+# run the way the Mac build does. The icon is converted from resources/icon.png.
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+nsis:
+  # A real installer with a directory choice, rather than a one-click that
+  # drops the app into AppData without asking.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64, arm64]
+  category: Network
+  # Debian wants "Name <email>" here; left as a bare name until one is chosen.
+  maintainer: Yusuf-web-droid
+  synopsis: A minimal desktop web browser built on Electron
+
 dmg:
   title: Lumina
   contents:

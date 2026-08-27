@@ -1,4 +1,11 @@
-import { BaseWindow, WebContentsView, type Rectangle, type WebContents } from 'electron'
+import {
+  BaseWindow,
+  WebContentsView,
+  nativeTheme,
+  type BaseWindowConstructorOptions,
+  type Rectangle,
+  type WebContents
+} from 'electron'
 import { join } from 'node:path'
 import type {
   BlockingDetails,
@@ -47,6 +54,26 @@ interface SessionData {
  * page without forcing the page to reflow. Its background is transparent, and
  * it only grows past BASE_CHROME_HEIGHT while such UI is open.
  */
+/**
+ * macOS hides the title bar but keeps its traffic lights, which the tab strip
+ * insets for. Windows and Linux have no such lights: without an overlay a
+ * frameless window has no close, minimise or maximise button at all, so they
+ * get the native overlay drawn over the strip's right end instead.
+ */
+function titleBarOptions(): Partial<BaseWindowConstructorOptions> {
+  if (process.platform === 'darwin') return { titleBarStyle: 'hiddenInset' }
+  const dark = nativeTheme.shouldUseDarkColors
+  return {
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: dark ? '#1f1f22' : '#e8e8ea',
+      symbolColor: dark ? '#ececf0' : '#1c1c1e',
+      // Matches --tabstrip-h, so the buttons sit level with the tabs.
+      height: 40
+    }
+  }
+}
+
 export class BrowserWindow {
   readonly window: BaseWindow
   private readonly chromeView: WebContentsView
@@ -83,7 +110,7 @@ export class BrowserWindow {
       minWidth: 560,
       minHeight: 400,
       title: 'Lumina',
-      titleBarStyle: 'hiddenInset', // keeps the macOS traffic lights, drops the title bar
+      ...titleBarOptions(),
       backgroundColor: '#f6f6f7',
       show: false
     })

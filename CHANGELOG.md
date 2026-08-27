@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Windows and Linux
+
+- **Lumina builds for Windows and Linux**, alongside macOS: an NSIS installer, an
+  AppImage and a deb, each for x64 and arm64. They are **untested** — they compile and
+  package, but nobody has run one yet.
+- The frameless window would have had no close, minimise or maximise button off macOS,
+  which hides its title bar but keeps the traffic lights. Windows and Linux get the
+  native overlay drawn over the tab strip's right end instead, and the strip insets on
+  that side rather than the left.
+- The application menu is a macOS convention, and its roles do not exist elsewhere, so
+  off macOS its contents move: Quit to the foot of File, About to Help.
+- Pushing a `v*` tag now builds all three platforms on GitHub's runners, runs the
+  typecheck and the suite on each, and attaches the artifacts to that tag's release.
+  Cross-building from a Mac is not possible without Wine and Docker.
+
 ## 0.2.0
 
 ### The clock moves, and changes face

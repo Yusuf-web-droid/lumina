@@ -88,6 +88,18 @@ svg {
   height: 100%;
 }
 
+/* Windows and Linux draw their controls over the strip's right end instead,
+   so the left inset goes and the room is kept on the other side. */
+:root[data-platform='win32'] #traffic-light-spacer,
+:root[data-platform='linux'] #traffic-light-spacer {
+  width: 0;
+}
+
+:root[data-platform='win32'] #tabstrip,
+:root[data-platform='linux'] #tabstrip {
+  padding-right: 146px;
+}
+
 #strip-drag {
   flex: 1;
   height: 100%;

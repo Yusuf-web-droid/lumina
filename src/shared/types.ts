@@ -254,6 +254,8 @@ export interface LuminaAPI {
     out(): Promise<void>
     reset(): Promise<void>
   }
+  /** Which OS the chrome is drawing on, so it can inset for window controls. */
+  platform: NodeJS.Platform
   respondToPermission(id: string, granted: boolean): Promise<void>
   setChromeHeight(height: number): Promise<void>
 

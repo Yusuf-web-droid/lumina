@@ -83,6 +83,7 @@ const api: LuminaAPI = {
     out: () => invoke<void>(IPC.ZoomOut),
     reset: () => invoke<void>(IPC.ZoomReset)
   },
+  platform: process.platform,
   respondToPermission: (id, granted) => invoke<void>(IPC.PermissionRespond, id, granted),
   setChromeHeight: (height) => invoke<void>(IPC.ChromeHeightChanged, height),
 

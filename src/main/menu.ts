@@ -21,21 +21,27 @@ export function rebuildMenu(): void {
 export function buildMenu(getWindow: () => BrowserWindow | null): void {
   const win = getWindow
   lastGetWindow = getWindow
+  // Windows and Linux have no application menu: its roles are macOS-only, and
+  // Quit and About belong on File and Help there instead.
+  const isMac = process.platform === 'darwin'
+  const macOnly = <T>(items: T[]): T[] => (isMac ? items : [])
   const template: MenuItemConstructorOptions[] = [
-    {
-      label: app.name,
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    },
+    ...macOnly<MenuItemConstructorOptions>([
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' }
+        ]
+      }
+    ]),
     {
       label: 'File',
       submenu: [
@@ -69,7 +75,10 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
         { role: 'paste' },
         { role: 'selectAll' },
         { type: 'separator' },
-        { label: 'Find…', accelerator: 'CmdOrCtrl+F', click: () => win()?.toggleFind() }
+        { label: 'Find…', accelerator: 'CmdOrCtrl+F', click: () => win()?.toggleFind() },
+        ...(isMac
+          ? []
+          : ([{ type: 'separator' }, { role: 'quit' }] as MenuItemConstructorOptions[]))
       ]
     },
     {
@@ -174,7 +183,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
       label: 'Window',
       submenu: [
         { role: 'minimize' },
-        { role: 'zoom' },
+        ...macOnly<MenuItemConstructorOptions>([{ role: 'zoom' }]),
         { type: 'separator' },
         {
           label: 'Select Next Tab',
@@ -198,8 +207,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
           accelerator: 'CmdOrCtrl+9',
           click: () => win()?.tabManager.activateIndex(8)
         },
-        { type: 'separator' },
-        { role: 'front' }
+        ...macOnly<MenuItemConstructorOptions>([{ type: 'separator' }, { role: 'front' }])
       ]
     },
     {
@@ -208,7 +216,10 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
         {
           label: 'Electron Documentation',
           click: () => void shell.openExternal('https://www.electronjs.org/docs/latest')
-        }
+        },
+        ...(isMac
+          ? []
+          : ([{ type: 'separator' }, { role: 'about' }] as MenuItemConstructorOptions[]))
       ]
     }
   ]

@@ -5,21 +5,31 @@ implementing a rendering engine, so real sites render exactly as they do in Chro
 
 ## Install
 
-Download the build for your Mac from the
-[latest release](../../releases/latest) — check  → About This Mac if you are not sure
-which you need:
+Download the build for your machine from the [latest release](../../releases/latest):
 
-| Your Mac | File |
+| Platform | File |
 |---|---|
-| Apple Silicon (M1 and later) | `Lumina-<version>-arm64.dmg` |
-| Intel | `Lumina-<version>.dmg` |
+| macOS, Apple Silicon (M1 and later) | `Lumina-<version>-arm64.dmg` |
+| macOS, Intel | `Lumina-<version>.dmg` |
+| Windows | `Lumina-<version>-x64-setup.exe` |
+| Linux | `Lumina-<version>.AppImage` or `.deb` |
 
-Open the DMG and drag Lumina to Applications.
+On macOS, check  → About This Mac if you are not sure which you need; open the DMG and
+drag Lumina to Applications. On Windows, run the installer. On Linux, `chmod +x` the
+AppImage and run it, or `sudo dpkg -i` the deb.
+
+> **The Windows and Linux builds are untested.** They compile and package on their own
+> CI runners, but nobody has yet run one. The Mac build is the one that has been used.
+> Please open an issue if a build misbehaves — that is the only way it gets found.
 
 ### First launch will be blocked
 
-macOS will refuse to open it, saying Lumina is damaged or from an unidentified
-developer. **It is neither.** The app is not signed with an Apple Developer ID
+Every build is unsigned, so each platform warns about it in its own way. On Windows,
+SmartScreen shows "Windows protected your PC" — click **More info** → **Run anyway**.
+On Linux there is nothing to bypass.
+
+On macOS, the system will refuse to open it, saying Lumina is damaged or from an
+unidentified developer. **It is neither.** The app is not signed with an Apple Developer ID
 certificate, and Gatekeeper treats every unsigned app this way. Signing requires a paid
 Apple Developer membership, which this project does not have.
 
@@ -41,8 +51,8 @@ from someone you do not know.
 
 ### Updating
 
-There is no auto-update: applying an update on macOS requires the same code signature
-the project does not have. Download a newer release and replace the app, or
+There is no auto-update: applying one requires the same code signature the project does
+not have. Download a newer release and replace the app, or
 `git pull` and rebuild. Your profile — tabs, bookmarks, history, quick links — lives in
 `~/Library/Application Support/Lumina/` and survives replacing the app.
 
@@ -393,6 +403,11 @@ bar first, which proves the chrome view expands over the page.
 ```bash
 npm run package
 ```
+
+That builds for macOS only. Windows installers need Wine and Linux packages need Docker
+when cross-built from a Mac, so the other two are built on their own CI runners instead:
+`.github/workflows/release.yml` runs the suite and packages all three platforms whenever
+a `v*` tag is pushed, then attaches the artifacts to that tag's release.
 
 Produces `dist/mac/Lumina.app` (276 MB) and `dist/Lumina-<version>.dmg` (116 MB), Intel x64,
 `minimumSystemVersion: 12.0`.
