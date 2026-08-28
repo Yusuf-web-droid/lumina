@@ -60,18 +60,19 @@ interface SessionData {
  * frameless window has no close, minimise or maximise button at all, so they
  * get the native overlay drawn over the strip's right end instead.
  */
-function titleBarOptions(): Partial<BaseWindowConstructorOptions> {
-  if (process.platform === 'darwin') return { titleBarStyle: 'hiddenInset' }
+function overlayColors(): { color: string; symbolColor: string; height: number } {
   const dark = nativeTheme.shouldUseDarkColors
   return {
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: dark ? '#1f1f22' : '#e8e8ea',
-      symbolColor: dark ? '#ececf0' : '#1c1c1e',
-      // Matches --tabstrip-h, so the buttons sit level with the tabs.
-      height: 40
-    }
+    color: dark ? '#1f1f22' : '#e8e8ea',
+    symbolColor: dark ? '#ececf0' : '#1c1c1e',
+    // Matches --tabstrip-h, so the buttons sit level with the tabs.
+    height: 40
   }
+}
+
+function titleBarOptions(): Partial<BaseWindowConstructorOptions> {
+  if (process.platform === 'darwin') return { titleBarStyle: 'hiddenInset' }
+  return { titleBarStyle: 'hidden', titleBarOverlay: overlayColors() }
 }
 
 export class BrowserWindow {
@@ -93,6 +94,8 @@ export class BrowserWindow {
   /** Last URL the rail was told about, so it is not repainted needlessly. */
   private lastRailURL: string | null = null
   private disposed = false
+  /** Detaches the appearance watcher that repaints the window controls. */
+  private stopOverlayWatch: (() => void) | null = null
 
   constructor() {
     this.sessionStore = new JSONStore<SessionData>('session.json', {
@@ -114,6 +117,15 @@ export class BrowserWindow {
       backgroundColor: '#f6f6f7',
       show: false
     })
+
+    // The overlay is painted by the system, not by the stylesheet, so it keeps
+    // whatever colours it was born with until it is told otherwise. Without
+    // this the buttons stay light on a strip that has gone dark.
+    if (process.platform !== 'darwin') {
+      this.stopOverlayWatch = themeStore().onChange(() => {
+        if (!this.disposed) this.window.setTitleBarOverlay(overlayColors())
+      })
+    }
 
     this.chromeView = new WebContentsView({
       webPreferences: {
@@ -544,6 +556,7 @@ export class BrowserWindow {
     // Closing the window mid-game must not leave the display blocker running
     // for the rest of the session.
     this.keepAwake.stop()
+    this.stopOverlayWatch?.()
     this.permissions.dispose()
     this.sidebar.dispose()
     this.tabs.dispose()

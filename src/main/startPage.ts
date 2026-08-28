@@ -1,5 +1,6 @@
 import { DIRECT_LINK_SECTIONS, GAME_SECTIONS, gamesIn, type Game } from '@shared/games'
 import type { QuickLink, QuickLinkIcon } from '@shared/types'
+import { shortcutLabel } from '@shared/shortcuts'
 import type { BackgroundKind } from './background'
 import { BACKGROUND_PRESETS } from './backgroundPresets'
 import type { ThemeSource } from './theme'
@@ -421,7 +422,7 @@ ${tiles || '<p class="empty">No quick links yet — add some from the ⊞ button
   </div>
 
   <a class="games-link" href="lumina://home/games">🎮 Games</a>
-  <p class="hint">Press ⌘⇧A to edit these links · ⌘J for Gemini</p>
+  <p class="hint">${shortcutLabel('Press ⌘⇧A to edit these links · ⌘J for Gemini', process.platform)}</p>
 
   ${widgetOverlays()}
 

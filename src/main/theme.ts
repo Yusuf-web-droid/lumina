@@ -43,8 +43,9 @@ export class Theme {
   }
 
   /** Fires when the OS appearance changes while the source is 'system'. */
-  onChange(listener: () => void): void {
+  onChange(listener: () => void): () => void {
     nativeTheme.on('updated', listener)
+    return () => nativeTheme.off('updated', listener)
   }
 
   flush(): void {

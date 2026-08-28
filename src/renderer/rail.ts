@@ -1,5 +1,6 @@
 import { destinationAfterDrop } from '@shared/tabOrder'
 import type { LuminaRailAPI, SidebarState, SidebarToolView } from '@shared/types'
+import { localiseTitles } from '@shared/shortcuts'
 
 declare global {
   interface Window {
@@ -8,6 +9,10 @@ declare global {
 }
 
 const api = window.luminaRail
+
+// The rail's bridge is deliberately tiny and carries no platform, but the user
+// agent keeps Chrome's platform token, which is enough to spell ⌘J correctly.
+localiseTitles(document, navigator.userAgent.includes('Macintosh') ? 'darwin' : 'win32')
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id)

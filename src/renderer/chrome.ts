@@ -9,6 +9,7 @@ import type {
   TabState
 } from '@shared/types'
 import { prettyURL } from '@shared/urlUtils'
+import { localiseTitles } from '@shared/shortcuts'
 
 declare global {
   interface Window {
@@ -20,6 +21,8 @@ const api = window.lumina
 
 // Lets the stylesheet inset for whichever corner holds the window controls.
 document.documentElement.dataset.platform = api.platform
+// The markup spells its tooltips the macOS way; elsewhere they are rewritten.
+localiseTitles(document, api.platform)
 const BASE_CHROME_HEIGHT = 84
 
 const $ = <T extends HTMLElement>(id: string): T => {
