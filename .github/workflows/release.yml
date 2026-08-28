@@ -65,10 +65,44 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    # Job-level permissions replace the workflow's, so contents is repeated
+    # here. The other two exist only to sign provenance, and only this job
+    # needs them — the build jobs stay on read-only defaults.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      # download-artifact nests each runner's output under its own directory.
+      # Flatten it, so the checksum file lists bare filenames — the names
+      # someone actually has on disk after downloading.
+      - name: Collect the installers
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec mv -t release {} +
+          ls -l release
+
+      - name: Write the checksums
+        working-directory: release
+        run: |
+          # Written outside the directory first: `*` would otherwise expand to
+          # include the file being written into.
+          sha256sum * > "$RUNNER_TEMP/SHA256SUMS.txt"
+          mv "$RUNNER_TEMP/SHA256SUMS.txt" .
+          cat SHA256SUMS.txt
+
+      # The project has no signing certificate, so this is the only proof on
+      # offer that an installer is what it claims: a Sigstore-signed statement
+      # that these exact bytes left this workflow, at this commit. It does not
+      # quiet SmartScreen or Gatekeeper — nothing but a paid certificate does —
+      # but it is what `gh attestation verify` checks against.
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release/*
 
       - name: Upload to the release
         env:
@@ -79,4 +113,4 @@ jobs:
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
             || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
                  --title "Lumina ${TAG#v}" --notes "See CHANGELOG.md."
-          gh release upload "$TAG" artifacts/*/* --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" release/* --clobber --repo "$GITHUB_REPOSITORY"

@@ -50,7 +50,44 @@ You have three options, in order of how much you have to trust a stranger:
    ```
 
 Only step 1 requires no trust at all, and it is the honest recommendation for a browser
-from someone you do not know.
+from someone you do not know. Short of that, you can at least check that the file you
+downloaded is the one CI built — see below.
+
+### Verifying the download
+
+Releases after 0.3.0 carry a [build provenance attestation](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
+for every installer: a Sigstore-signed statement that those exact bytes came out of this
+repository's release workflow, at a named commit. It is **not** a code signature — it will
+not quiet SmartScreen or Gatekeeper, because nothing but a paid certificate does. It
+answers the other half of the question instead: did this file really come from here, and
+has anything touched it since?
+
+Check it with the [GitHub CLI](https://cli.github.com) (`gh auth login` first):
+
+```bash
+gh attestation verify Lumina-<version>-x64-setup.exe --repo Yusuf-web-droid/lumina
+```
+
+A pass names the workflow and commit that produced the file. A failure means it is not
+what CI built — delete it rather than running it.
+
+Every release also carries `SHA256SUMS.txt`, covering all the installers, if you only want
+to confirm the download arrived intact:
+
+```bash
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing   # macOS
+sha256sum -c SHA256SUMS.txt --ignore-missing       # Linux
+```
+
+```powershell
+# Windows: compare the printed hash against the matching line in SHA256SUMS.txt
+Get-FileHash Lumina-<version>-x64-setup.exe -Algorithm SHA256
+```
+
+A checksum only proves the bytes are whole, not where they came from — it is served from
+the same page as the installer, so anyone who could swap one could swap both. The
+attestation is the one that survives that, since it is signed by GitHub's own workflow
+identity rather than posted alongside the file.
 
 ### Updating
 
