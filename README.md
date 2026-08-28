@@ -13,7 +13,8 @@ Download the build for your machine from the [latest release](../../releases/lat
 |---|---|
 | macOS, Apple Silicon (M1 and later) | `Lumina-<version>-arm64.dmg` |
 | macOS, Intel | `Lumina-<version>.dmg` |
-| Windows | `Lumina-<version>-x64-setup.exe` |
+| Windows, Intel or AMD | `Lumina-<version>-x64-setup.exe` |
+| Windows on Arm | `Lumina-<version>-arm64-setup.exe` |
 | Linux | `Lumina-<version>.AppImage` or `.deb` |
 
 On macOS, check  → About This Mac if you are not sure which you need; open the DMG and
