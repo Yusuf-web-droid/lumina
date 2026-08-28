@@ -3,6 +3,8 @@
 A desktop web browser built on Electron and TypeScript. It wraps Chromium rather than
 implementing a rendering engine, so real sites render exactly as they do in Chrome.
 
+**[lumina — the site](https://yusuf-web-droid.github.io/lumina/)** · [Downloads](../../releases/latest) · [Changelog](CHANGELOG.md)
+
 ## Install
 
 Download the build for your machine from the [latest release](../../releases/latest):
